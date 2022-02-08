@@ -49,7 +49,7 @@ struct LayerParameters
     function LayerParameters(;nlayer,t0,tp0,J=zeros(Float64,nlayer),chi=zeros(Float64,nlayer),
                                 x=ones(Float64,nlayer),D=zeros(Float64,nlayer),mu=zeros(Float64,nlayer),
                                 mu_aux=zeros(Float64,nlayer),Q=Dict(i=>[] for i=1:nlayer),
-                                t_orth=Array{Float64}[],ac=Array{Float64}[])
+                                t_orth=zeros(Float64,nlayer-1),ac=zeros(Float64,nlayer-1))
 
         ## Check that all variables are consistent with nlayer
         warn=[]
