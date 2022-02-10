@@ -17,7 +17,7 @@ Fields:
 - theta           : Magnetic field polar angle (give in Degree, is then converted to rad)
 - eta             : broadening parameter (inverse of particle lifetime)
 - outfolder       : Folder where output files will be written
-- b               : Magnetic field array [bmin,bmax] (Float64,nb)
+- bgrid           : Magnetic field array [bmin,bmax] (Float64,nb)
 """
 
 struct SimulationParameters
@@ -28,7 +28,7 @@ struct SimulationParameters
     theta       :: Float64
     eta         :: Float64
     outfolder   :: AbstractString
-    b           :: FieldMesh
+    bgrid       :: FieldMesh
 
     SimulationParameters(;nx,bmin,bmax,nb,theta_in,eta,outfolder) = nx > 0 && nb > 0 ? new(nx,bmin,bmax,
                                                                                             nb,theta_in*pi/180,

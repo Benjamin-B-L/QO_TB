@@ -37,18 +37,6 @@ pSimulation = SimulationParameters(nx=nx,bmin=bmin,bmax=bmax,nb=nb,theta_in=thet
 pLayer = LayerParameters(nlayer=nlayer,t0=t0,tp0=tp0,Q=Q,Pcdw=Pcdw,D=D,yrz_mode=yrz_mode,mu=mu,mu_aux=mu_aux,x=x,chi=chi,J=J)
 
 #Compute the bare Fermi Surface & write it to file
-FS = getBareFS(pLayer,nk,pSimulation.eta)
+#FS = getBareFS(pLayer,nk,pSimulation.eta)
 
-
-
-f = open("test.dat","w")
-for i=1:nk
-    for j=1:nk
-        write(f,string(FS.kgrid[i,j,1])*" ")
-        write(f,string(FS.kgrid[i,j,2])*" ")
-        for k=1:FS.norb
-            write(f,string(FS.fs[i,j,k])*" ")
-        end
-        write(f,"\n")
-    end
-end
+#Compute DOS for all magnetic field values
