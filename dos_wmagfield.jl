@@ -38,7 +38,10 @@ so that we can perform FT along the y direction.
 
 """
 function getBdepDOS(pSim::SimulationParameters,Layer::LayerParameters)
-    c = prepareHparam(Layer)
+    norb,orbs_layer,klist = prepareHparam(Layer)
+    println(norb)
+    println(orbs_layer)
+    println(klist)
 end
 
 """
@@ -48,9 +51,10 @@ Generates the essential parameters for the blocks of the Hamiltonian : size, orb
 """
 function prepareHparam(Layer::LayerParameters)
     #First search for CDW
-    ncdw, ncdw_list, qlist = get_ncdw_wMagField(Layer)
+    ncdw_list, qlist = get_ncdw_wMagField(Layer)
     #Get the k-vector list
-    klist = get_klist_wMagField(ncdw,ncdw_list,qlist)
+    klist = get_klist_wMagField(ncdw_list,qlist)
+    ncdw = length(klist)
 
     #Compute norb by checking if YRZ & construct orbs array
     norb=0
@@ -112,7 +116,7 @@ function get_ncdw_wMagField(Layer::LayerParameters)
         end
     end
     #Total nbr is the product
-    return Int64(prod(ncdw_list)),ncdw_list,qlist
+    return ncdw_list,qlist
 end
 
 """
@@ -120,19 +124,20 @@ end
 
 Determines the list of k-points necessary for FS calculation from the q vectors
 """
-function get_klist_wMagField(ncdw::Int64,ncdw_list::Vector{Any},qlist::Vector{Any})
+function get_klist_wMagField(ncdw_list::Vector{Any},qlist::Vector{Any})
     klist=[[0.0,0.0]]
     #If no cdw vector
-    if ncdw == 0
+    if length(qlist) == 0
         return klist
     end
     #Else, find all possible k-points
     ktmp = [[0.0,0.0]]
-    for iq=1:length(qlist)
+    iq=1
+    while iq <= length(qlist)
         for k in ktmp
             for inq=1:ncdw_list[iq]
                 if !([mod((k+qlist[iq])[1],2pi),mod((k+qlist[iq])[2],2pi)] in klist)
-                    append!(klist,[k+qlist[iq]])
+                    append!(klist,[[mod((k+qlist[iq])[1],2pi),mod((k+qlist[iq])[2],2pi)]])
                 end
             end
         end
@@ -140,12 +145,12 @@ function get_klist_wMagField(ncdw::Int64,ncdw_list::Vector{Any},qlist::Vector{An
             if iq==length(qlist)
                 break
             else
-                @goto loopagain
+                ktmp=[klist[ik] for ik=1:length(klist)]
+                iq+=1
             end
         else
-            ktmp=klist
+            ktmp=[klist[ik] for ik=1:length(klist)]
         end
-        @label loopagain
     end
     return klist
 end

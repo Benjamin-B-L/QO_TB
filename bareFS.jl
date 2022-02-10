@@ -106,7 +106,7 @@ function get_klist(ncdw_list::Vector{Any},qlist::Vector{Any})
         for k in ktmp
             for inq=1:ncdw_list[iq]
                 if !([mod((k+qlist[iq])[1],2pi),mod((k+qlist[iq])[2],2pi)] in klist)
-                    append!(klist,[k+qlist[iq]])
+                    append!(klist,[[mod((k+qlist[iq])[1],2pi),mod((k+qlist[iq])[2],2pi)]])
                 end
             end
         end
