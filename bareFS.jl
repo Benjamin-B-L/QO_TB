@@ -24,12 +24,11 @@ struct FermiSurface
 
     nk        :: Int64
     norb      :: Int64
-    ncdw      :: Int64
     kgrid     :: FSArray
     orbs      :: OrbsArray
     fs        :: FSArray
 
-    function FermiSurface(;nk,norb,ncdw,orbs)
+    function FermiSurface(;nk,norb,orbs)
         # Check nbr of k-points
         if nk <= 0 || norb <= 0
             throw(ArgumentError("nk=$nk number of kpoints and norb=$norb should be larger than zero"))
@@ -41,7 +40,7 @@ struct FermiSurface
                 kgrid[ikx,iky,2] = -pi+2*pi*(iky-1)/nk
             end
         end
-        return new(nk,norb,ncdw,kgrid,orbs,zeros(Float64,nk,nk,norb))
+        return new(nk,norb,kgrid,orbs,zeros(Float64,nk,nk,norb))
     end
 end
 
@@ -55,10 +54,11 @@ Determines the size of the Hamiltonian in k-space for FS calculation
 """
 function prepFSHam(Layer::LayerParameters)
     #First search for CDW
-    ncdw, ncdw_list, qlist = get_ncdw(Layer)
+    qlist,ncdw_list = get_qlist(Layer)
 
     #Get the k-vector list
-    klist = get_klist(ncdw,ncdw_list,qlist)
+    klist = get_klist(ncdw_list,qlist)
+    ncdw = length(klist)
 
     #Compute norb by checking if YRZ & construct orbs array
     norb=0
@@ -85,23 +85,24 @@ function prepFSHam(Layer::LayerParameters)
         end
     end
 
-    return norb,ncdw,orbs,orbs_layer,qlist,klist
+    return norb,orbs,orbs_layer,qlist,klist
 end
 
 """
-    get_klist(ncdw::Int64,ncdw_list::Vector{Any},qlist::Vector{Any})
+    get_klist(ncdw_list::Vector{Any},qlist::Vector{Any})
 
 Determines the list of k-points necessary for FS calculation from the q vectors
 """
-function get_klist(ncdw::Int64,ncdw_list::Vector{Any},qlist::Vector{Any})
+function get_klist(ncdw_list::Vector{Any},qlist::Vector{Any})
     klist=[[0.0,0.0]]
     #If no cdw vector
-    if ncdw == 0
+    if length(qlist) == 0
         return klist
     end
     #Else, find all possible k-points
-    ktmp = klist
-    for iq=1:length(qlist)
+    ktmp = [[0.0,0.0]]
+    iq=1
+    while iq <= length(qlist)
         for k in ktmp
             for inq=1:ncdw_list[iq]
                 if !([mod((k+qlist[iq])[1],2pi),mod((k+qlist[iq])[2],2pi)] in klist)
@@ -113,22 +114,22 @@ function get_klist(ncdw::Int64,ncdw_list::Vector{Any},qlist::Vector{Any})
             if iq==length(qlist)
                 break
             else
-                @goto loopagain
+                ktmp=[klist[ik] for ik=1:length(klist)]
+                iq+=1
             end
         else
-            ktmp=klist
+            ktmp=[klist[ik] for ik=1:length(klist)]
         end
-        @label loopagain
     end
     return klist
 end
 
 """
-    get_ncdw(Layer::LayerParameters)
+    get_qlist(Layer::LayerParameters)
 
-Determines the number of different k-points necessary from all Q vectors in all layers
+Find all the different q vectors in all layers
 """
-function get_ncdw(Layer::LayerParameters)
+function get_qlist(Layer::LayerParameters)
     #Extract all different Q vectors
     qlist = []
     for ilayer = 1:nlayer
@@ -143,7 +144,7 @@ function get_ncdw(Layer::LayerParameters)
 
     #If no cdw vector
     if length(qlist)==0
-        return 0,[],[]
+        return []
     end
     #For all different Q, find the necessary nbr of kpoints
     ncdw_list = []
@@ -161,7 +162,7 @@ function get_ncdw(Layer::LayerParameters)
         end
     end
     #Total nbr is the product
-    return Int64(prod(ncdw_list)),ncdw_list,qlist
+    return qlist,ncdw_list
 end
 
 
@@ -321,8 +322,6 @@ function getRhoatmu(Layer::LayerParameters,norb::Int64,orbs_layer::Vector{Int64}
     klistH = [[mod((klist[ik]+k)[1]+pi,2pi)-pi,mod((klist[ik]+k)[2]+pi,2pi)-pi] for ik=1:length(klist)]
     #Get Hamiltonian
     H = getH(Layer,norb,klistH,qlist)
-    # display("text/plain",H)
-    # println("")
     #evaluate Green's function at mu
     rho = -imag(inv(1im*eta*I(norb)-H))/pi
     #Extract diagonal and eventually scale by gt
@@ -340,8 +339,8 @@ Layer, the number of k-points nk.
 """
 function getBareFS(Layer::LayerParameters,nk::Int64,eta::Float64)
     #Initialize FS struct
-    norb,ncdw,orbs,orbs_layer,qlist,klist = prepFSHam(Layer)
-    FS = FermiSurface(nk=nk,norb=norb,ncdw=ncdw,orbs=orbs)
+    norb,orbs,orbs_layer,qlist,klist = prepFSHam(Layer)
+    FS = FermiSurface(nk=nk,norb=norb,orbs=orbs)
     #Compute FS at each k-point
     for ikx = 1:nk
         for iky = 1:nk
