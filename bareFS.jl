@@ -49,25 +49,6 @@ end
 ################# Functions #################################################
 
 """
-    getBareFS(Layer::LayerParam,nk::Int64)
-
-Calculates the Fermi Surface without magnetic field from the Layers' parameters
-Layer, the number of k-points nk.
-"""
-function getBareFS(Layer::LayerParameters,nk::Int64,eta::Float64)
-    #Initialize FS struct
-    norb,ncdw,orbs,orbs_layer,qlist,klist = prepFSHam(Layer)
-    FS = FermiSurface(nk=nk,norb=norb,ncdw=ncdw,orbs=orbs)
-    #Compute FS at each k-point
-    for ikx = 1:nk
-        for iky = 1:nk
-            FS.fs[ikx,iky,:] = getRhoatmu(Layer,norb,orbs_layer,FS.kgrid[ikx,iky,:],klist,qlist,eta)
-        end
-    end
-    return FS
-end
-
-"""
     prepFSHam(Layer::LayerParam)
 
 Determines the size of the Hamiltonian in k-space for FS calculation
@@ -183,125 +164,8 @@ function get_ncdw(Layer::LayerParameters)
     return Int64(prod(ncdw_list)),ncdw_list,qlist
 end
 
-"""
-    getRhoatmu(Layer::LayerParameters,norb,ncdw,k)
 
-Compute the spectral weight at the fermi level at k point from the layers' parameters in Layer. The
-size of Hamiltonian is given by norb, and there is (2*)ncdw k-points per layer.
-"""
-function getRhoatmu(Layer::LayerParameters,norb::Int64,orbs_layer::Vector{Int64},k::Vector{Float64},
-                    klist::Vector{Vector{Float64}},qlist::Vector{Any}, eta::Float64)
 
-    rho_out = zeros(Float64,norb)
-    #Shift klist
-    klistH = [[mod((klist[ik]+k)[1]+pi,2pi)-pi,mod((klist[ik]+k)[2]+pi,2pi)-pi] for ik=1:length(klist)]
-    #Get Hamiltonian
-    H = getH(Layer,norb,klistH,qlist)
-    #evaluate Green's function at mu
-    rho = -imag(inv(1im*eta*I(norb)-H))/pi
-    #Extract diagonal and eventually scale by gt
-    for iorb=1:norb
-        rho_out[iorb]=gt(Layer.x[orbs_layer[iorb]])*rho[iorb,iorb]
-    end
-    return rho_out
-end
-
-"""
-    getH(Layer::LayerParameters,norb::Int64,klist::Vector{Vector{Float64}},qlist::Vector{Any})
-
-Generates the Hamiltonian at zero field
-"""
-function getH(Layer::LayerParameters,norb::Int64,klist::Vector{Vector{Float64}},qlist::Vector{Any})
-    nklist =length(klist)
-    H = zeros(Complex{Float64},norb,norb)
-    cnt=1
-    cnt_perlay=[]
-    for ilay = 1:Layer.nlayer
-        push!(cnt_perlay,cnt-1)
-        #if YRZ model
-        if abs(Layer.D[ilay])>1e-8
-            for iyrz = 1:2
-                for ik = 1:nklist
-                    #Physical electrons
-                    if iyrz==1
-                        #Diagonal
-                        H[cnt,cnt] = eps(klist[ik],Layer.t[ilay],Layer.tp[ilay],Layer.mu[ilay])
-                        #YRZ coupling
-                        H[cnt,cnt+nklist] = yrz_delta(klist[ik],Layer.D[ilay])
-                        #CDW
-                        for q in qlist
-                            #+Q
-                            kq = [mod((klist[ik]+q)[1]+pi,2pi)-pi,mod((klist[ik]+q)[2]+pi,2pi)-pi]
-                            kq_index = cnt_perlay[ilay] + findfirst(x->abs((x[1]-kq[1])^2+(x[2]-kq[2])^2)<1e-8,klist)
-                            H[cnt,kq_index] = Layer.Pcdw[ilay]*ffactor(klist[ik])
-                            H[kq_index,cnt] = Layer.Pcdw[ilay]*ffactor(klist[ik])
-                            #-Q
-                            kq = [mod((klist[ik]-q)[1]+pi,2pi)-pi,mod((klist[ik]-q)[2]+pi,2pi)-pi]
-                            kq_index = cnt_perlay[ilay] + findfirst(x->abs((x[1]-kq[1])^2+(x[2]-kq[2])^2)<1e-8,klist)
-                            H[cnt,kq_index] = Layer.Pcdw[ilay]*ffactor(klist[ik])
-                            H[kq_index,cnt] = Layer.Pcdw[ilay]*ffactor(klist[ik])
-                        end
-                        #interlayer coupling
-                        if Layer.nlayer > 1
-                            if ilay==1
-                                H[cnt,cnt+2*nklist] = -Layer.t_orth[ilay]
-                            elseif ilay==Layer.nlayer
-                                H[cnt,cnt-(cnt_perlay[ilay]-cnt_perlay[ilay-1])] = -Layer.t_orth[ilay-1]
-                            else
-                                H[cnt,cnt+2*nklist] = -Layer.t_orth[ilay]
-                                H[cnt,cnt-(cnt_perlay[ilay]-cnt_perlay[ilay-1])] = -Layer.t_orth[ilay-1]
-                            end
-                        end
-                    #Auxiliary electrons
-                    else
-                        #Diagonal
-                        H[cnt,cnt] = eps_aux(klist[ik],Layer.t[ilay],Layer.tp[ilay],
-                                             Layer.mu_aux[ilay],Layer.yrz_mode[ilay])
-                        #YRZ
-                        H[cnt,cnt-nklist] = yrz_delta(klist[ik],Layer.D[ilay])
-                    end
-                    cnt += 1
-                end
-            end
-        #if no YRZ
-        else
-            #Only physical electrons
-            for ik = 1:nklist
-                #Diagonal
-                H[cnt,cnt] = eps(klist[ik],Layer.t[ilay],Layer.tp[ilay],Layer.mu[ilay])
-                #CDW
-                for q in qlist
-                    #+Q
-                    kq = [mod((klist[ik]+q)[1]+pi,2pi)-pi,mod((klist[ik]+q)[2]+pi,2pi)-pi]
-                    kq_index = cnt_perlay[ilay] + findfirst(x->abs((x[1]-kq[1])^2+(x[2]-kq[2])^2)<1e-8,klist)
-                    H[cnt,kq_index] = Layer.Pcdw[ilay]*ffactor(klist[ik])
-                    H[kq_index,cnt] = Layer.Pcdw[ilay]*ffactor(klist[ik])
-                    #-Q
-                    kq = [mod((klist[ik]-q)[1]+pi,2pi)-pi,mod((klist[ik]-q)[2]+pi,2pi)-pi]
-                    if findfirst(x->abs((x[1]-kq[1])^2+(x[2]-kq[2])^2)<1e-8,klist)==nothing
-                        println(kq," ",klist)
-                    end
-                    kq_index = cnt_perlay[ilay] + findfirst(x->abs((x[1]-kq[1])^2+(x[2]-kq[2])^2)<1e-8,klist)
-                    H[cnt,kq_index] = Layer.Pcdw[ilay]*ffactor(klist[ik])
-                    H[kq_index,cnt] = Layer.Pcdw[ilay]*ffactor(klist[ik])
-                end
-                #interlayer coupling
-                if Layer.nlayer > 1
-                    if ilay==1
-                        H[cnt,cnt+nklist] = -Layer.t_orth[ilay]
-                    elseif ilay==Layer.nlayer
-                        H[cnt,cnt-(cnt_perlay[ilay]-cnt_perlay[ilay-1])] = -Layer.t_orth[ilay-1]
-                    else
-                        H[cnt,cnt+nklist] = -Layer.t_orth[ilay]
-                        H[cnt,cnt-(cnt_perlay[ilay]-cnt_perlay[ilay-1])] = -Layer.t_orth[ilay-1]
-                    end
-                end
-                cnt += 1
-            end
-        end
-    end
-    return H
-end
 
 """
     eps(k,t,tp,mu)
@@ -344,4 +208,145 @@ Computes the CDW form factor (d-wave here)
 """
 function ffactor(k)
     return (cos(k[1])-cos(k[2]))
+end
+
+"""
+    getH(Layer::LayerParameters,norb::Int64,klist::Vector{Vector{Float64}},qlist::Vector{Any})
+
+Generates the Hamiltonian at zero field
+"""
+function getH(Layer::LayerParameters,norb::Int64,klist::Vector{Vector{Float64}},qlist::Vector{Any})
+    nklist =length(klist)
+    H = zeros(Complex{Float64},norb,norb)
+    cnt=1
+    cnt_perlay=[]
+    for ilay = 1:Layer.nlayer
+        push!(cnt_perlay,cnt-1)
+        #if YRZ model
+        if abs(Layer.D[ilay])>1e-8
+            for iyrz = 1:2
+                for ik = 1:nklist
+                    #Physical electrons
+                    if iyrz==1
+                        #Diagonal
+                        H[cnt,cnt] = eps(klist[ik],Layer.t[ilay],Layer.tp[ilay],Layer.mu[ilay])
+                        #YRZ coupling
+                        H[cnt,cnt+nklist] = yrz_delta(klist[ik],Layer.D[ilay])
+                        #CDW
+                        for q in qlist
+                            #+Q
+                            kq = [mod((klist[ik]+q)[1]+pi,2pi)-pi,mod((klist[ik]+q)[2]+pi,2pi)-pi]
+                            kq_index = cnt_perlay[ilay] + findfirst(x->abs((x[1]-kq[1])^2+(x[2]-kq[2])^2)<1e-8,klist)
+                            H[cnt,kq_index] += Layer.Pcdw[ilay]*ffactor(klist[ik])
+                            H[kq_index,cnt] += Layer.Pcdw[ilay]*ffactor(klist[ik])
+                            #-Q
+                            kq = [mod((klist[ik]-q)[1]+pi,2pi)-pi,mod((klist[ik]-q)[2]+pi,2pi)-pi]
+                            kq_index = cnt_perlay[ilay] + findfirst(x->abs((x[1]-kq[1])^2+(x[2]-kq[2])^2)<1e-8,klist)
+                            H[cnt,kq_index] += Layer.Pcdw[ilay]*ffactor(klist[ik])
+                            H[kq_index,cnt] += Layer.Pcdw[ilay]*ffactor(klist[ik])
+                        end
+                        #interlayer coupling
+                        if Layer.nlayer > 1
+                            if ilay==1
+                                H[cnt,cnt+2*nklist] = -Layer.t_orth[ilay]
+                            elseif ilay==Layer.nlayer
+                                H[cnt,cnt-(cnt_perlay[ilay]-cnt_perlay[ilay-1])] = -Layer.t_orth[ilay-1]
+                            else
+                                H[cnt,cnt+2*nklist] = -Layer.t_orth[ilay]
+                                H[cnt,cnt-(cnt_perlay[ilay]-cnt_perlay[ilay-1])] = -Layer.t_orth[ilay-1]
+                            end
+                        end
+                    #Auxiliary electrons
+                    else
+                        #Diagonal
+                        H[cnt,cnt] = eps_aux(klist[ik],Layer.t[ilay],Layer.tp[ilay],
+                                             Layer.mu_aux[ilay],Layer.yrz_mode[ilay])
+                        #YRZ
+                        H[cnt,cnt-nklist] = yrz_delta(klist[ik],Layer.D[ilay])
+                    end
+                    cnt += 1
+                end
+            end
+        #if no YRZ
+        else
+            #Only physical electrons
+            for ik = 1:nklist
+                #Diagonal
+                H[cnt,cnt] = eps(klist[ik],Layer.t[ilay],Layer.tp[ilay],Layer.mu[ilay])
+                #CDW
+                for q in qlist
+                    #+Q
+                    kq = [mod((klist[ik]+q)[1]+pi,2pi)-pi,mod((klist[ik]+q)[2]+pi,2pi)-pi]
+                    kq_index = cnt_perlay[ilay] + findfirst(x->abs((x[1]-kq[1])^2+(x[2]-kq[2])^2)<1e-8,klist)
+                    H[cnt,kq_index] += Layer.Pcdw[ilay]*ffactor(klist[ik])
+                    H[kq_index,cnt] += Layer.Pcdw[ilay]*ffactor(klist[ik])
+                    #-Q
+                    kq = [mod((klist[ik]-q)[1]+pi,2pi)-pi,mod((klist[ik]-q)[2]+pi,2pi)-pi]
+                    kq_index = cnt_perlay[ilay] + findfirst(x->abs((x[1]-kq[1])^2+(x[2]-kq[2])^2)<1e-8,klist)
+                    H[cnt,kq_index] += Layer.Pcdw[ilay]*ffactor(klist[ik])
+                    H[kq_index,cnt] += Layer.Pcdw[ilay]*ffactor(klist[ik])
+                end
+                #interlayer coupling
+                if Layer.nlayer > 1
+                    if ilay==1
+                        H[cnt,cnt+nklist] = -Layer.t_orth[ilay]
+                    elseif ilay==Layer.nlayer
+                        H[cnt,cnt-(cnt_perlay[ilay]-cnt_perlay[ilay-1])] = -Layer.t_orth[ilay-1]
+                    else
+                        H[cnt,cnt+nklist] = -Layer.t_orth[ilay]
+                        H[cnt,cnt-(cnt_perlay[ilay]-cnt_perlay[ilay-1])] = -Layer.t_orth[ilay-1]
+                    end
+                end
+                cnt += 1
+            end
+        end
+    end
+    return H
+end
+
+
+
+"""
+    getRhoatmu(Layer::LayerParameters,norb::Int64,orbs_layer::Vector{Int64},k::Vector{Float64},
+                klist::Vector{Vector{Float64}},qlist::Vector{Any},eta::Float64)
+
+Compute the spectral weight at the fermi level at k point from the layers' parameters in Layer. The
+size of Hamiltonian is given by norb, and there is (2*)ncdw k-points per layer.
+"""
+function getRhoatmu(Layer::LayerParameters,norb::Int64,orbs_layer::Vector{Int64},k::Vector{Float64},
+                    klist::Vector{Vector{Float64}},qlist::Vector{Any}, eta::Float64)
+
+    rho_out = zeros(Float64,norb)
+    #Shift klist
+    klistH = [[mod((klist[ik]+k)[1]+pi,2pi)-pi,mod((klist[ik]+k)[2]+pi,2pi)-pi] for ik=1:length(klist)]
+    #Get Hamiltonian
+    H = getH(Layer,norb,klistH,qlist)
+    # display("text/plain",H)
+    # println("")
+    #evaluate Green's function at mu
+    rho = -imag(inv(1im*eta*I(norb)-H))/pi
+    #Extract diagonal and eventually scale by gt
+    for iorb=1:norb
+        rho_out[iorb]=gt(Layer.x[orbs_layer[iorb]])*rho[iorb,iorb]
+    end
+    return rho_out
+end
+
+"""
+    getBareFS(Layer::LayerParam,nk::Int64,eta::Float64)
+
+Calculates the Fermi Surface without magnetic field from the Layers' parameters
+Layer, the number of k-points nk.
+"""
+function getBareFS(Layer::LayerParameters,nk::Int64,eta::Float64)
+    #Initialize FS struct
+    norb,ncdw,orbs,orbs_layer,qlist,klist = prepFSHam(Layer)
+    FS = FermiSurface(nk=nk,norb=norb,ncdw=ncdw,orbs=orbs)
+    #Compute FS at each k-point
+    for ikx = 1:nk
+        for iky = 1:nk
+            FS.fs[ikx,iky,:] = getRhoatmu(Layer,norb,orbs_layer,FS.kgrid[ikx,iky,:],klist,qlist,eta)
+        end
+    end
+    return FS
 end
