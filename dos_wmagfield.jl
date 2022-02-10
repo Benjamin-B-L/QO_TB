@@ -38,10 +38,22 @@ so that we can perform FT along the y direction.
 
 """
 function getBdepDOS(pSim::SimulationParameters,Layer::LayerParameters)
+    #Prepare parameters for the Hamiltonian blocks
     norb,orbs_layer,klist = prepareHparam(Layer)
-    println(norb)
-    println(orbs_layer)
-    println(klist)
+    println("norb = ",norb)
+    println("orbs_layer = ",orbs_layer)
+    println("klist = ",klist)
+    #Pick a random ky between [0:2pi[ and create ky_list
+    ky = 2*pi*rand(Float64)
+    ky_list = [mod(klist[ik][2]+ky,2*pi) for ik=1:length(klist)]
+    println("ky = ",ky)
+    println("kjy_list = ",ky_list)
+    #Loop over magnetic field values
+    dos = DensityOfStates(dos_size=pSim.nb)
+    for ib = 1:pSim.nb
+        diag,diagL,diagR = getDiags(pSim.nx,pSim.bgrid[ib],pSim.theta,ky_list)
+    end
+
 end
 
 """

@@ -85,7 +85,7 @@ function prepFSHam(Layer::LayerParameters)
         end
     end
 
-    return norb,orbs,orbs_layer,qlist,klist
+    return norb,orbs,orbs_layer,klist
 end
 
 """
@@ -212,11 +212,11 @@ function ffactor(k)
 end
 
 """
-    getH(Layer::LayerParameters,norb::Int64,klist::Vector{Vector{Float64}},qlist::Vector{Any})
+    getH(Layer::LayerParameters,norb::Int64,klist::Vector{Vector{Float64}})
 
 Generates the Hamiltonian at zero field
 """
-function getH(Layer::LayerParameters,norb::Int64,klist::Vector{Vector{Float64}},qlist::Vector{Any})
+function getH(Layer::LayerParameters,norb::Int64,klist::Vector{Vector{Float64}})
     nklist =length(klist)
     H = zeros(Complex{Float64},norb,norb)
     cnt=1
@@ -234,7 +234,7 @@ function getH(Layer::LayerParameters,norb::Int64,klist::Vector{Vector{Float64}},
                         #YRZ coupling
                         H[cnt,cnt+nklist] = yrz_delta(klist[ik],Layer.D[ilay])
                         #CDW
-                        for q in qlist
+                        for q in Layer.Q[ilay]
                             #+Q
                             kq = [mod((klist[ik]+q)[1]+pi,2pi)-pi,mod((klist[ik]+q)[2]+pi,2pi)-pi]
                             kq_index = cnt_perlay[ilay] + findfirst(x->abs((x[1]-kq[1])^2+(x[2]-kq[2])^2)<1e-8,klist)
@@ -275,7 +275,7 @@ function getH(Layer::LayerParameters,norb::Int64,klist::Vector{Vector{Float64}},
                 #Diagonal
                 H[cnt,cnt] = eps(klist[ik],Layer.t[ilay],Layer.tp[ilay],Layer.mu[ilay])
                 #CDW
-                for q in qlist
+                for q in Layer.Q[ilay]
                     #+Q
                     kq = [mod((klist[ik]+q)[1]+pi,2pi)-pi,mod((klist[ik]+q)[2]+pi,2pi)-pi]
                     kq_index = cnt_perlay[ilay] + findfirst(x->abs((x[1]-kq[1])^2+(x[2]-kq[2])^2)<1e-8,klist)
@@ -309,19 +309,19 @@ end
 
 """
     getRhoatmu(Layer::LayerParameters,norb::Int64,orbs_layer::Vector{Int64},k::Vector{Float64},
-                klist::Vector{Vector{Float64}},qlist::Vector{Any},eta::Float64)
+                klist::Vector{Vector{Float64}},eta::Float64)
 
 Compute the spectral weight at the fermi level at k point from the layers' parameters in Layer. The
 size of Hamiltonian is given by norb, and there is (2*)ncdw k-points per layer.
 """
 function getRhoatmu(Layer::LayerParameters,norb::Int64,orbs_layer::Vector{Int64},k::Vector{Float64},
-                    klist::Vector{Vector{Float64}},qlist::Vector{Any}, eta::Float64)
+                    klist::Vector{Vector{Float64}}, eta::Float64)
 
     rho_out = zeros(Float64,norb)
     #Shift klist
     klistH = [[mod((klist[ik]+k)[1]+pi,2pi)-pi,mod((klist[ik]+k)[2]+pi,2pi)-pi] for ik=1:length(klist)]
     #Get Hamiltonian
-    H = getH(Layer,norb,klistH,qlist)
+    H = getH(Layer,norb,klistH)
     #evaluate Green's function at mu
     rho = -imag(inv(1im*eta*I(norb)-H))/pi
     #Extract diagonal and eventually scale by gt
@@ -339,12 +339,12 @@ Layer, the number of k-points nk.
 """
 function getBareFS(Layer::LayerParameters,nk::Int64,eta::Float64)
     #Initialize FS struct
-    norb,orbs,orbs_layer,qlist,klist = prepFSHam(Layer)
+    norb,orbs,orbs_layer,klist = prepFSHam(Layer)
     FS = FermiSurface(nk=nk,norb=norb,orbs=orbs)
     #Compute FS at each k-point
     for ikx = 1:nk
         for iky = 1:nk
-            FS.fs[ikx,iky,:] = getRhoatmu(Layer,norb,orbs_layer,FS.kgrid[ikx,iky,:],klist,qlist,eta)
+            FS.fs[ikx,iky,:] = getRhoatmu(Layer,norb,orbs_layer,FS.kgrid[ikx,iky,:],klist,eta)
         end
     end
     return FS
