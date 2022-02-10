@@ -51,7 +51,7 @@ function getBdepDOS(pSim::SimulationParameters,Layer::LayerParameters)
     #Loop over magnetic field values
     dos = DensityOfStates(dos_size=pSim.nb)
     for ib = 1:pSim.nb
-        diag,diagL,diagR = getDiags(pSim.nx,pSim.bgrid[ib],pSim.theta,ky_list)
+        diag,diagL,diagR = getDiags(pSim.nx,pSim.bgrid[ib],pSim.theta,ky_list,Layer,norb)
     end
 
 end
@@ -165,4 +165,51 @@ function get_klist_wMagField(ncdw_list::Vector{Any},qlist::Vector{Any})
         end
     end
     return klist
+end
+
+
+"""
+    getDiags(nx::Int64,B::Float64,theta::Float64,ky_list::Vector{Float64},Layer::LayerParameters)
+
+Compute iteratively the left and right diagonal blocks necessary for the Green's function calculation
+"""
+function getDiags(nx::Int64,B::Float64,theta::Float64,ky_list::Vector{Float64},Layer::LayerParameters,norb::Int64)
+    diag = zeros(Complex{Float64},nx,norb,norb)
+    diagL = zeros(Complex{Float64},nx,norb,norb)
+    diagR = zeros(Complex{Float64},nx,norb,norb)
+
+    #Diag
+    diag[1] = diagblock(1,B,theta,ky_list,Layer,norb)
+    #Left Diag
+    diagL[1] = diagblock(1,B,theta,ky_list,Layer,norb)
+    #Right Diag
+    diagR[nx] = diagblock(nx,B,theta,ky_list,Layer,norb)
+    for ix=2:nx
+        #Diag
+        diag[ix] = diagblock(ix,B,theta,ky_list,Layer,norb)
+        #Left Diag
+        diagL[ix] = diag[ix]+offdiagblock(ix,ix-1,B,theta,ky_list,Layer,norb)*inv(diagL[ix-1])*offdiagblock(ix-1,ix,B,theta,ky_list,Layer,norb)
+        #Right Diag
+        diagR[nx-ix+1] = diagblock(nx-ix+1,B,theta,ky_list,Layer,norb)+offdiagblock(nx-ix+1,nx-ix+1+1,B,theta,ky_list,Layer,norb)*inv(diagR[nx-ix+1+1])*offdiagblock(nx-ix+1+1,ix,B,theta,ky_list,Layer,norb)
+    end
+
+    return diag,diagL,diagR
+end
+
+"""
+    diagblock(ix::Int64,B::Float64,theta::Float64,ky_list::Vector{Float64},Layer::LayerParameters,norb::Int64)
+
+Calculate the diagonal block n° ix
+"""
+function diagblock(ix::Int64,B::Float64,theta::Float64,ky_list::Vector{Float64},Layer::LayerParameters,norb::Int64)
+    body
+end
+
+"""
+    offdiagblock(ix1::Int64,ix2::int64,B::Float64,theta::Float64,ky_list::Vector{Float64},Layer::LayerParameters,norb::Int64)
+
+Calculate the offdiagonal block (ix1,ix2)
+"""
+function offdiagblock(ix1::Int64,ix2::Int64,B::Float64,theta::Float64,ky_list::Vector{Float64},Layer::LayerParameters,norb::Int64)
+    body
 end
