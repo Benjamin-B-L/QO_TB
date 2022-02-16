@@ -40,47 +40,21 @@ so that we can perform FT along the y direction.
 function getBdepDOS(pSim::SimulationParameters,Layer::LayerParameters)
     #Prepare parameters for the Hamiltonian blocks
     norb,orbs_layer,klist = prepareHparam(Layer)
-    #Pick a random ky between [0:2pi[ and create ky_list
-    ky = 2*pi*rand(Float64)
-    ky = (rand(Float64)*101)*pi/101
-    ky_list = [mod(klist[ik][2]+ky,2*pi) for ik=1:length(klist)]
-    #Loop over magnetic field values
-    dos = DensityOfStates(dos_size=pSim.nb,nky=5)
-    for ib = 1:pSim.nb
-        diag,diagL,diagR = getDiags(pSim.nx,pSim.bgrid[ib],pSim.theta,ky_list,Layer,norb,0.5,pSim.eta)
-        dos.dos[ib,1] += get_dos(diag,diagL,diagR,Layer,pSim.nx,length(ky_list))
-    end
-    ky = (rand(Float64)*101)*pi/101
-    ky_list = [mod(klist[ik][2]+ky,2*pi) for ik=1:length(klist)]
-    #Loop over magnetic field values
-    for ib = 1:pSim.nb
-        diag,diagL,diagR = getDiags(pSim.nx,pSim.bgrid[ib],pSim.theta,ky_list,Layer,norb,0.5,pSim.eta)
-        dos.dos[ib,2] += get_dos(diag,diagL,diagR,Layer,pSim.nx,length(ky_list))
-    end
-    ky = (rand(Float64)*101)*pi/101
-    ky_list = [mod(klist[ik][2]+ky,2*pi) for ik=1:length(klist)]
-    #Loop over magnetic field values
-    for ib = 1:pSim.nb
-        diag,diagL,diagR = getDiags(pSim.nx,pSim.bgrid[ib],pSim.theta,ky_list,Layer,norb,0.5,pSim.eta)
-        dos.dos[ib,3] += get_dos(diag,diagL,diagR,Layer,pSim.nx,length(ky_list))
-    end
-    ky = (rand(Float64)*101)*pi/101
-    ky_list = [mod(klist[ik][2]+ky,2*pi) for ik=1:length(klist)]
-    #Loop over magnetic field values
-    for ib = 1:pSim.nb
-        diag,diagL,diagR = getDiags(pSim.nx,pSim.bgrid[ib],pSim.theta,ky_list,Layer,norb,0.5,pSim.eta)
-        dos.dos[ib,4] += get_dos(diag,diagL,diagR,Layer,pSim.nx,length(ky_list))
-    end
-    ky = (rand(Float64)*101)*pi/101
-    ky_list = [mod(klist[ik][2]+ky,2*pi) for ik=1:length(klist)]
-    #Loop over magnetic field values
-    for ib = 1:pSim.nb
-        diag,diagL,diagR = getDiags(pSim.nx,pSim.bgrid[ib],pSim.theta,ky_list,Layer,norb,0.5,pSim.eta)
-        dos.dos[ib,5] += get_dos(diag,diagL,diagR,Layer,pSim.nx,length(ky_list))
-    end
 
-
-
+    dos = DensityOfStates(dos_size=pSim.nb,nky=pSim.ny_avg+1)
+    for iy = 1:pSim.ny_avg
+        #Pick a random ky between [0:2pi[ and create ky_list
+        ky = 2*pi*rand(Float64)
+        ky_list = [mod(klist[ik][2]+ky,2*pi) for ik=1:length(klist)]
+        #Loop over magnetic field values
+        for ib = 1:pSim.nb
+            diag,diagL,diagR = getDiags(pSim.nx,pSim.bgrid[ib],pSim.theta,ky_list,Layer,norb,0.5,pSim.eta)
+            dos.dos[ib,iy] += get_dos(diag,diagL,diagR,Layer,pSim.nx,length(ky_list))
+        end
+    end
+    for ib=1:pSim.nb
+        dos.dos[ib,pSim.ny_avg+1] = sum(dos.dos[ib,:])/ny_avg
+    end
     return dos
 end
 

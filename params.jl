@@ -22,6 +22,7 @@ Fields:
 
 struct SimulationParameters
     nx          :: Int64
+    ny_avg      :: Int64
     bmin        :: Float64
     bmax        :: Float64
     nb          :: Int64
@@ -30,9 +31,9 @@ struct SimulationParameters
     outfolder   :: AbstractString
     bgrid       :: FieldMesh
 
-    SimulationParameters(;nx,bmin,bmax,nb,theta_in,eta,outfolder) = nx > 0 && nb > 0 ? new(nx,bmin,bmax,
+    SimulationParameters(;nx,ny_avg,bmin,bmax,nb,theta_in,eta,outfolder) = nx > 0 && ny_avg > 0 && nb > 0 ? new(nx,ny_avg,bmin,bmax,
                                                                                             nb,theta_in*pi/180,
                                                                                             eta,outfolder,
                                                                                             [bmin+n*(bmax-bmin)/nb for n=0:nb-1]) :
-                        throw(ArgumentError("nx=$nx (system size) and nb=$nb (Nbr of field points) should be larger than zero !"))
+                        throw(ArgumentError("nx=$nx (system size), ny_avg=$ny_avg (nbr of averaging points) and nb=$nb (Nbr of field points) should be larger than zero !"))
 end

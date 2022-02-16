@@ -7,7 +7,8 @@ include("bareFS.jl")
 include("dos_wmagfield.jl")
 
 ## Simulation Parameters
-nx         = 10000                  #System size in x (and y) direction
+nx         = 1000                  #System size in x direction
+ny_avg     = 5                      #Nbr of ky points for averaging
 bmin       = 1/660                   #Minimum magnetic field (T)
 bmax       = 1/580                  #Maximum magnetic field (T)
 nb         = 5000                  #Nbr of field points
@@ -35,12 +36,14 @@ ac         = []                   #Interlayer distance, empty if nlayer=1
 
 
 ## Generate model & simulation
-pSimulation = SimulationParameters(nx=nx,bmin=bmin,bmax=bmax,nb=nb,theta_in=theta_in,eta=eta,outfolder=outfolder)
+pSimulation = SimulationParameters(nx=nx,ny_avg=ny_avg,bmin=bmin,bmax=bmax,nb=nb,theta_in=theta_in,eta=eta,outfolder=outfolder)
 pLayer = LayerParameters(nlayer=nlayer,t0=t0,tp0=tp0,Q=Q,Pcdw=Pcdw,D=D,yrz_mode=yrz_mode,mu=mu,mu_aux=mu_aux,x=x,chi=chi,J=J,t_orth=t_orth,ac=ac)
 
-#Compute the bare Fermi Surface & write it to file
-FS = getBareFS(pLayer,nk,pSimulation.eta)
 
+
+# #Compute the bare Fermi Surface & write it to file
+# FS = getBareFS(pLayer,nk,pSimulation.eta)
+#
 # f = open("test.dat","w")
 # for i=1:nk
 #     for j=1:nk
@@ -53,17 +56,16 @@ FS = getBareFS(pLayer,nk,pSimulation.eta)
 #     end
 # end
 
-#Compute DOS for all magnetic field values
-dos = getBdepDOS(pSimulation,pLayer)
-
-
-f = open("test_dos_nx10000_nb5000_maharajparams.dat","w")
-for ib = 1:nb
-    write(f,string(1/pSimulation.bgrid[ib])*" ")
-    write(f,string(dos.dos[ib,1])*" ")
-    write(f,string(dos.dos[ib,2])*" ")
-    write(f,string(dos.dos[ib,3])*" ")
-    write(f,string(dos.dos[ib,4])*" ")
-    write(f,string(dos.dos[ib,5])*"\n")
-end
-close(f)
+# #Compute DOS for all magnetic field values
+# dos = getBdepDOS(pSimulation,pLayer)
+#
+#
+# f = open("test_dos_nx1000_nb5000_maharajparams.dat","w")
+# for ib = 1:nb
+#     write(f,string(1/pSimulation.bgrid[ib])*" ")
+#     for iy = 1:ny_avg+1
+#         write(f,string(dos.dos[ib,iy])*" ")
+#     end
+#     write(f,"\n")
+# end
+# close(f)
