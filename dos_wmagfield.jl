@@ -17,9 +17,9 @@ Fields:
 
 struct DensityOfStates
 
-    dos         :: FieldMesh
+    dos         :: Matrix{Float64}
 
-    DensityOfStates(;dos_size) = new(zeros(Float64,dos_size))
+    DensityOfStates(;dos_size,nky) = new(zeros(Float64,dos_size,nky))
 
 end
 
@@ -40,20 +40,48 @@ so that we can perform FT along the y direction.
 function getBdepDOS(pSim::SimulationParameters,Layer::LayerParameters)
     #Prepare parameters for the Hamiltonian blocks
     norb,orbs_layer,klist = prepareHparam(Layer)
-    println("norb = ",norb)
-    println("orbs_layer = ",orbs_layer)
-    println("klist = ",klist)
     #Pick a random ky between [0:2pi[ and create ky_list
     ky = 2*pi*rand(Float64)
+    ky = (rand(Float64)*101)*pi/101
     ky_list = [mod(klist[ik][2]+ky,2*pi) for ik=1:length(klist)]
-    println("ky = ",ky)
-    println("kjy_list = ",ky_list)
     #Loop over magnetic field values
-    dos = DensityOfStates(dos_size=pSim.nb)
+    dos = DensityOfStates(dos_size=pSim.nb,nky=5)
     for ib = 1:pSim.nb
-        diag,diagL,diagR = getDiags(pSim.nx,pSim.bgrid[ib],pSim.theta,ky_list,Layer,norb)
+        diag,diagL,diagR = getDiags(pSim.nx,pSim.bgrid[ib],pSim.theta,ky_list,Layer,norb,0.5,pSim.eta)
+        dos.dos[ib,1] += get_dos(diag,diagL,diagR,Layer,pSim.nx,length(ky_list))
+    end
+    ky = (rand(Float64)*101)*pi/101
+    ky_list = [mod(klist[ik][2]+ky,2*pi) for ik=1:length(klist)]
+    #Loop over magnetic field values
+    for ib = 1:pSim.nb
+        diag,diagL,diagR = getDiags(pSim.nx,pSim.bgrid[ib],pSim.theta,ky_list,Layer,norb,0.5,pSim.eta)
+        dos.dos[ib,2] += get_dos(diag,diagL,diagR,Layer,pSim.nx,length(ky_list))
+    end
+    ky = (rand(Float64)*101)*pi/101
+    ky_list = [mod(klist[ik][2]+ky,2*pi) for ik=1:length(klist)]
+    #Loop over magnetic field values
+    for ib = 1:pSim.nb
+        diag,diagL,diagR = getDiags(pSim.nx,pSim.bgrid[ib],pSim.theta,ky_list,Layer,norb,0.5,pSim.eta)
+        dos.dos[ib,3] += get_dos(diag,diagL,diagR,Layer,pSim.nx,length(ky_list))
+    end
+    ky = (rand(Float64)*101)*pi/101
+    ky_list = [mod(klist[ik][2]+ky,2*pi) for ik=1:length(klist)]
+    #Loop over magnetic field values
+    for ib = 1:pSim.nb
+        diag,diagL,diagR = getDiags(pSim.nx,pSim.bgrid[ib],pSim.theta,ky_list,Layer,norb,0.5,pSim.eta)
+        dos.dos[ib,4] += get_dos(diag,diagL,diagR,Layer,pSim.nx,length(ky_list))
+    end
+    ky = (rand(Float64)*101)*pi/101
+    ky_list = [mod(klist[ik][2]+ky,2*pi) for ik=1:length(klist)]
+    #Loop over magnetic field values
+    for ib = 1:pSim.nb
+        diag,diagL,diagR = getDiags(pSim.nx,pSim.bgrid[ib],pSim.theta,ky_list,Layer,norb,0.5,pSim.eta)
+        dos.dos[ib,5] += get_dos(diag,diagL,diagR,Layer,pSim.nx,length(ky_list))
     end
 
+
+
+    return dos
 end
 
 """
@@ -116,7 +144,7 @@ function get_ncdw_wMagField(Layer::LayerParameters)
 
     #If no cdw vector
     if length(qlist)==0
-        return 0,[],[]
+        return [],[],[]
     end
     #For all different Q, find the necessary nbr of kpoints -> only for Qy since no FT along x
     ncdw_list = []
@@ -169,47 +197,339 @@ end
 
 
 """
-    getDiags(nx::Int64,B::Float64,theta::Float64,ky_list::Vector{Float64},Layer::LayerParameters)
+    getDiags(nx::Int64,B::Float64,theta::Float64,ky_list::Vector{Float64},Layer::LayerParameters,norb::Int64,sigma::Float64,eta::Float64)
 
 Compute iteratively the left and right diagonal blocks necessary for the Green's function calculation
 """
-function getDiags(nx::Int64,B::Float64,theta::Float64,ky_list::Vector{Float64},Layer::LayerParameters,norb::Int64)
+function getDiags(nx::Int64,B::Float64,theta::Float64,ky_list::Vector{Float64},Layer::LayerParameters,norb::Int64,sigma::Float64,eta::Float64)
     diag = zeros(Complex{Float64},nx,norb,norb)
     diagL = zeros(Complex{Float64},nx,norb,norb)
     diagR = zeros(Complex{Float64},nx,norb,norb)
 
     #Diag
-    diag[1] = diagblock(1,B,theta,ky_list,Layer,norb)
+    diag[1,:,:] = diagblock(1,B,theta,ky_list,Layer,norb,sigma,eta)
     #Left Diag
-    diagL[1] = diagblock(1,B,theta,ky_list,Layer,norb)
+    diagL[1,:,:] = diagblock(1,B,theta,ky_list,Layer,norb,sigma,eta)
     #Right Diag
-    diagR[nx] = diagblock(nx,B,theta,ky_list,Layer,norb)
+    diagR[nx,:,:] = diagblock(nx,B,theta,ky_list,Layer,norb,sigma,eta)
     for ix=2:nx
         #Diag
-        diag[ix] = diagblock(ix,B,theta,ky_list,Layer,norb)
+        diag[ix,:,:] = diagblock(ix,B,theta,ky_list,Layer,norb,sigma,eta)
         #Left Diag
-        diagL[ix] = diag[ix]+offdiagblock(ix,ix-1,B,theta,ky_list,Layer,norb)*inv(diagL[ix-1])*offdiagblock(ix-1,ix,B,theta,ky_list,Layer,norb)
+        diagL[ix,:,:] = diag[ix,:,:]-offdiagblock(ix,ix-1,B,theta,ky_list,Layer,norb,sigma)*inv(diagL[ix-1,:,:])*offdiagblock(ix-1,ix,B,theta,ky_list,Layer,norb,sigma)
         #Right Diag
-        diagR[nx-ix+1] = diagblock(nx-ix+1,B,theta,ky_list,Layer,norb)+offdiagblock(nx-ix+1,nx-ix+1+1,B,theta,ky_list,Layer,norb)*inv(diagR[nx-ix+1+1])*offdiagblock(nx-ix+1+1,ix,B,theta,ky_list,Layer,norb)
+        diagR[nx-ix+1,:,:] = diagblock(nx-ix+1,B,theta,ky_list,Layer,norb,sigma,eta)-offdiagblock(nx-ix+1,nx-ix+1+1,B,theta,ky_list,Layer,norb,sigma)*inv(diagR[nx-ix+1+1,:,:])*offdiagblock(nx-ix+1+1,nx-ix+1,B,theta,ky_list,Layer,norb,sigma)
     end
 
     return diag,diagL,diagR
 end
 
 """
-    diagblock(ix::Int64,B::Float64,theta::Float64,ky_list::Vector{Float64},Layer::LayerParameters,norb::Int64)
+    diagblock(ix::Int64,B::Float64,theta::Float64,ky_list::Vector{Float64},Layer::LayerParameters,
+               norb::Int64,sigma::Float64)
 
 Calculate the diagonal block n° ix
 """
-function diagblock(ix::Int64,B::Float64,theta::Float64,ky_list::Vector{Float64},Layer::LayerParameters,norb::Int64)
-    body
+function diagblock(ix::Int64,B::Float64,theta::Float64,ky_list::Vector{Float64},Layer::LayerParameters,
+                    norb::Int64,sigma::Float64,eta::Float64)
+
+    nklist = length(ky_list)
+    H = zeros(Complex{Float64},norb,norb)
+    cnt=1
+    cnt_perlay=[]
+    for ilay = 1:Layer.nlayer
+        push!(cnt_perlay,cnt-1)
+        #if YRZ model
+        if abs(Layer.D[ilay])>1e-8
+            for iyrz = 1:2
+                for ik = 1:nklist
+                    #Physical electrons
+                    if iyrz==1
+                        #Dispersion
+                        H[cnt,cnt] += eps("diag",ky_list[ik],Layer.t[ilay],0.0,Layer.mu[ilay],ix,0.0,B,theta)
+                        #YRZ coupling
+                        H[cnt,cnt+nklist] += yrz_delta("diag",ky_list[ik],Layer.D[ilay],ix,B,theta)
+                        #CDW
+                        for q in Layer.Q[ilay]
+                            if abs(q[1])<1e-8
+                                #+Qy
+                                kq = mod((ky_list[ik]+q[2])+pi,2pi)
+                                kq_index = cnt_perlay[ilay] + findfirst(x->abs(x-kq)<1e-8,ky_list)
+                                H[cnt,kq_index] += cdw_coupling("diag","y",ky_list[ik],Layer.Pcdw[ilay],ix,0.0,B,theta)
+                                H[kq_index,cnt] += cdw_coupling("diag","y",ky_list[ik],Layer.Pcdw[ilay],ix,0.0,B,theta)
+                                #-Qy
+                                kq = mod((ky_list[ik]-q[2])+pi,2pi)
+                                kq_index = cnt_perlay[ilay] + findfirst(x->abs(x-kq)^2<1e-8,ky_list)
+                                H[cnt,kq_index] += cdw_coupling("diag","y",ky_list[ik],Layer.Pcdw[ilay],ix,0.0,B,theta)
+                                H[kq_index,cnt] += cdw_coupling("diag","y",ky_list[ik],Layer.Pcdw[ilay],ix,0.0,B,theta)
+                            else
+                                #+Qx
+                                H[cnt,cnt] += cdw_coupling("diag","x",ky_list[ik],Layer.Pcdw[ilay],ix,0.0,B,theta,q[1])
+                                #-Qx
+                                H[cnt,cnt] += cdw_coupling("diag","x",ky_list[ik],Layer.Pcdw[ilay],ix,0.0,B,theta,-q[1])
+                            end
+                        end
+                        #interlayer coupling
+                        if Layer.nlayer > 1
+                            if ilay==1
+                                H[cnt,cnt+2*nklist] = -Layer.t_orth[ilay]*exp(im*2*pi*ix*B*cos(theta)*tan(Layer.ac[ilay]))
+                            elseif ilay==Layer.nlayer
+                                H[cnt,cnt-(cnt_perlay[ilay]-cnt_perlay[ilay-1])] = -Layer.t_orth[ilay-1]*exp(-im*2*pi*ix*B*cos(theta)*tan(Layer.ac[ilay-1]))
+                            else
+                                H[cnt,cnt+2*nklist] = -Layer.t_orth[ilay]*exp(im*2*pi*ix*B*cos(theta)*tan(Layer.ac[ilay]))
+                                H[cnt,cnt-(cnt_perlay[ilay]-cnt_perlay[ilay-1])] = -Layer.t_orth[ilay-1]*exp(-im*2*pi*ix*B*cos(theta)*tan(Layer.ac[ilay-1]))
+                            end
+                        end
+                        #Zeeman splitting
+                        H[cnt,cnt] += 4*pi*Layer.g_tilde[ilay]*B*sigma
+                    #Auxiliary electrons
+                    else
+                        #Dispersion
+                        H[cnt,cnt] += eps_aux("diag",ky_list[ik],Layer.t[ilay],0.0,Layer.mu_aux[ilay],Layer.yrz_mode[ilay],ix,0.0,B,theta)
+                        #YRZ
+                        H[cnt,cnt-nklist] += conj(yrz_delta("diag",ky_list[ik],Layer.D[ilay],ix,B,theta))
+                        #Zeeman splitting
+                        H[cnt,cnt] += 4*pi*Layer.g_tilde[ilay]*B*sigma
+                    end
+                    cnt += 1
+                end
+            end
+        #if no YRZ
+        else
+            #Only physical electrons
+            for ik = 1:nklist
+                #Diagonal
+                H[cnt,cnt] += eps("diag",ky_list[ik],Layer.t[ilay],0.0,Layer.mu[ilay],ix,0.0,B,theta)
+                #CDW
+                for q in Layer.Q[ilay]
+                    if abs(q[1])<1e-8
+                        #+Qy
+                        kq = mod((ky_list[ik]+q[2])+pi,2pi)
+                        kq_index = cnt_perlay[ilay] + findfirst(x->abs(x-kq)^2<1e-8,ky_list)
+                        H[cnt,kq_index] += cdw_coupling("diag","y",ky_list[ik],Layer.Pcdw[ilay],ix,0.0,B,theta)
+                        H[kq_index,cnt] += cdw_coupling("diag","y",ky_list[ik],Layer.Pcdw[ilay],ix,0.0,B,theta)
+                        #-Qy
+                        kq = mod((ky_list[ik]-q[2])+pi,2pi)
+                        kq_index = cnt_perlay[ilay] + findfirst(x->abs(x-kq)^2<1e-8,ky_list)
+                        H[cnt,kq_index] += cdw_coupling("diag","y",ky_list[ik],Layer.Pcdw[ilay],ix,0.0,B,theta)
+                        H[kq_index,cnt] += cdw_coupling("diag","y",ky_list[ik],Layer.Pcdw[ilay],ix,0.0,B,theta)
+                    else
+                        #+Qx
+                        H[cnt,cnt] += cdw_coupling("diag","x",ky_list[ik],Layer.Pcdw[ilay],ix,0.0,B,theta,q[1])
+                        #-Qx
+                        H[cnt,cnt] += cdw_coupling("diag","x",ky_list[ik],Layer.Pcdw[ilay],ix,0.0,B,theta,-q[1])
+                    end
+                end
+                #interlayer coupling
+                if Layer.nlayer > 1
+                    if ilay==1
+                        H[cnt,cnt+nklist] = -Layer.t_orth[ilay]*exp(im*2*pi*ix*B*cos(theta)*tan(Layer.ac[ilay]))
+                    elseif ilay==Layer.nlayer
+                        H[cnt,cnt-(cnt_perlay[ilay]-cnt_perlay[ilay-1])] = -Layer.t_orth[ilay-1]*exp(-im*2*pi*ix*B*cos(theta)*tan(Layer.ac[ilay-1]))
+                    else
+                        H[cnt,cnt+nklist] = -Layer.t_orth[ilay]*exp(im*2*pi*ix*B*cos(theta)*tan(Layer.ac[ilay]))
+                        H[cnt,cnt-(cnt_perlay[ilay]-cnt_perlay[ilay-1])] = -Layer.t_orth[ilay-1]*exp(-im*2*pi*ix*B*cos(theta)*tan(Layer.ac[ilay-1]))
+                    end
+                end
+                #Zeeman splitting
+                H[cnt,cnt] += 4*pi*Layer.g_tilde[ilay]*B*sigma
+                cnt += 1
+            end
+        end
+    end
+    return im*eta*I(norb)-H
+end
+
+
+"""
+    offdiagblock(ix1::Int64,ix2::Int64,B::Float64,theta::Float64,ky_list::Vector{Float64},Layer::LayerParameters,
+               norb::Int64,sigma::Float64)
+
+Calculate the offdiagonal block n° ix
+"""
+function offdiagblock(ix1::Int64,ix2::Int64,B::Float64,theta::Float64,ky_list::Vector{Float64},Layer::LayerParameters,
+                    norb::Int64,sigma::Float64)
+
+    nklist = length(ky_list)
+    H = zeros(Complex{Float64},norb,norb)
+    cnt=1
+    cnt_perlay=[]
+    for ilay = 1:Layer.nlayer
+        push!(cnt_perlay,cnt-1)
+        #if YRZ model
+        if abs(Layer.D[ilay])>1e-8
+            for iyrz = 1:2
+                for ik = 1:nklist
+                    #Physical electrons
+                    if iyrz==1
+                        #Dispersion
+                        H[cnt,cnt] += eps("offdiag",ky_list[ik],Layer.t[ilay],Layer.tp[ilay],Layer.mu[ilay],ix1,ix2,B,theta)
+                        #YRZ coupling
+                        H[cnt,cnt+nklist] += yrz_delta("offdiag",ky_list[ik],Layer.D[ilay],0,B,theta)
+                        #CDW
+                        for q in Layer.Q[ilay]
+                            if abs(q[1])<1e-8
+                                #+Qy
+                                kq = mod((ky_list[ik]+q[2])+pi,2pi)
+                                kq_index = cnt_perlay[ilay] + findfirst(x->abs(x-kq)<1e-8,ky_list)
+                                H[cnt,kq_index] += cdw_coupling("offdiag","y",ky_list[ik],Layer.Pcdw[ilay],ix1,0.0,B,theta)
+                                H[kq_index,cnt] += cdw_coupling("offdiag","y",ky_list[ik],Layer.Pcdw[ilay],ix1,0.0,B,theta)
+                                #-Qy
+                                kq = mod((ky_list[ik]-q[2])+pi,2pi)
+                                kq_index = cnt_perlay[ilay] + findfirst(x->abs(x-kq)^2<1e-8,ky_list)
+                                H[cnt,kq_index] += cdw_coupling("offdiag","y",ky_list[ik],Layer.Pcdw[ilay],ix1,0.0,B,theta)
+                                H[kq_index,cnt] += cdw_coupling("offdiag","y",ky_list[ik],Layer.Pcdw[ilay],ix1,0.0,B,theta)
+                            else
+                                #+Qx
+                                H[cnt,cnt] += cdw_coupling("offdiag","x",ky_list[ik],Layer.Pcdw[ilay],ix1,ix2,B,theta,q[1])
+                                #-Qx
+                                H[cnt,cnt] += cdw_coupling("offdiag","x",ky_list[ik],Layer.Pcdw[ilay],ix1,ix2,B,theta,-q[1])
+                            end
+                        end
+                    #Auxiliary electrons
+                    else
+                        #Dispersion
+                        H[cnt,cnt] += eps_aux("offdiag",ky_list[ik],Layer.t[ilay],Layer.tp[ilay],Layer.mu_aux[ilay],Layer.yrz_mode[ilay],ix1,ix2,B,theta)
+                        #YRZ
+                        H[cnt,cnt-nklist] += conj(yrz_delta("offdiag",ky_list[ik],Layer.D[ilay],0,B,theta))
+                    end
+                    cnt += 1
+                end
+            end
+        #if no YRZ
+        else
+            #Only physical electrons
+            for ik = 1:nklist
+                #Diagonal
+                H[cnt,cnt] += eps("offdiag",ky_list[ik],Layer.t[ilay],Layer.tp[ilay],Layer.mu[ilay],ix1,ix2,B,theta)
+                #CDW
+                for q in Layer.Q[ilay]
+                    if abs(q[1])<1e-8
+                        #+Qy
+                        kq = mod((ky_list[ik]+q[2])+pi,2pi)
+                        kq_index = cnt_perlay[ilay] + findfirst(x->abs(x-kq)<1e-8,ky_list)
+                        H[cnt,kq_index] += cdw_coupling("offdiag","y",ky_list[ik],Layer.Pcdw[ilay],ix1,0.0,B,theta)
+                        H[kq_index,cnt] += cdw_coupling("offdiag","y",ky_list[ik],Layer.Pcdw[ilay],ix1,0.0,B,theta)
+                        #-Qy
+                        kq = mod((ky_list[ik]-q[2])+pi,2pi)
+                        kq_index = cnt_perlay[ilay] + findfirst(x->abs(x-kq)^2<1e-8,ky_list)
+                        H[cnt,kq_index] += cdw_coupling("offdiag","y",ky_list[ik],Layer.Pcdw[ilay],ix1,0.0,B,theta)
+                        H[kq_index,cnt] += cdw_coupling("offdiag","y",ky_list[ik],Layer.Pcdw[ilay],ix1,0.0,B,theta)
+                    else
+                        #+Qx
+                        H[cnt,cnt] += cdw_coupling("offdiag","x",ky_list[ik],Layer.Pcdw[ilay],ix1,ix2,B,theta,q[1])
+                        #-Qx
+                        H[cnt,cnt] += cdw_coupling("offdiag","x",ky_list[ik],Layer.Pcdw[ilay],ix1,ix2,B,theta,-q[1])
+                    end
+                end
+                cnt += 1
+            end
+        end
+    end
+    return -H
+end
+
+
+"""
+    eps(switch,ky,t,tp,ix,B,theta)
+
+Compute the dispersion term for the diagonal or off-diag block for physical electrons.
+"""
+function eps(switch,ky,t,tp,mu,ix1,ix2,B,theta)
+    if switch=="diag"
+        return -2*t*cos(2*pi*B*cos(theta)*ix1+ky)-mu
+    elseif switch=="offdiag"
+        return -t-2*tp*cos(2*pi*B*cos(theta)*(ix1+0.5*sign(ix1-ix2))+ky)
+    else
+        throw(ArgumentError("Input switch not recongnized: must be either set to diag or offdiag"))
+    end
 end
 
 """
-    offdiagblock(ix1::Int64,ix2::int64,B::Float64,theta::Float64,ky_list::Vector{Float64},Layer::LayerParameters,norb::Int64)
+    eps_aux(switch,ky,t,tp,ix,B,theta)
 
-Calculate the offdiagonal block (ix1,ix2)
+Compute the dispersion term for the diagonal or off-diag block for auxiliary electrons.
 """
-function offdiagblock(ix1::Int64,ix2::Int64,B::Float64,theta::Float64,ky_list::Vector{Float64},Layer::LayerParameters,norb::Int64)
-    body
+function eps_aux(switch,ky,t,tp,mu,yrz_mode,ix1,ix2,B,theta)
+    if switch=="diag"
+        return 2*t*cos(2*pi*B*cos(theta)*ix1+ky)-mu
+    elseif switch=="offdiag"
+        if yrz_mode=="Norm"
+            return t
+        elseif yrz_mode=="AFM"
+            return t-2*tp*cos(2*pi*B*cos(theta)*(ix1+0.5*sign(ix1-ix2))+ky)
+        else
+            throw(ArgumentError("YRZ mode $yrz_mode not implemented"))
+        end
+    else
+        throw(ArgumentError("Input switch not recongnized: must be either set to diag or offdiag"))
+    end
+end
+
+
+"""
+    yrz_delta(switch,ky,t,ix,B,theta)
+
+Compute the YRZ coupling term.
+"""
+function yrz_delta(switch,ky,D,ix,B,theta)
+    if switch=="diag"
+        return -D*cos(2*pi*B*cos(theta)*ix+ky)
+    elseif switch=="offdiag"
+        return 0.5*D
+    else
+        throw(ArgumentError("Input switch not recongnized: must be either set to diag or offdiag"))
+    end
+end
+
+"""
+    cdw_coupling(switch,direction,ky,Pcdw,ix,B,theta)
+
+Compute the CDW coupling.
+"""
+function cdw_coupling(switch,direction,ky,Pcdw,ix1,ix2,B,theta,qx=0)
+    if switch=="diag"
+        if direction=="y"
+            return -Pcdw*cos(2*pi*B*cos(theta)*ix1+ky)
+        elseif direction=="x"
+            return -Pcdw*cos(2*pi*B*cos(theta)*ix1+ky)*exp(im*qx*ix1)
+        end
+    elseif switch=="offdiag"
+        if direction=="y"
+            return 0.5*Pcdw
+        elseif direction=="x"
+            return 0.5*Pcdw*exp(-im*qx*(ix1+sign(ix2-ix1)))
+        end
+    else
+        throw(ArgumentError("Input switch not recongnized: must be either set to diag or offdiag"))
+    end
+end
+
+"""
+    get_dos(diag::Array{ComplexF64, 3},diagL::Array{ComplexF64, 3},diagR::Array{ComplexF64, 3},
+    Layer::LayerParameters,nx::Int64,nklist::Int64)
+
+documentation
+"""
+function get_dos(diag::Array{ComplexF64, 3},diagL::Array{ComplexF64, 3},diagR::Array{ComplexF64, 3},
+                  Layer::LayerParameters,nx::Int64,nklist::Int64)
+    dos = 0
+
+    for ix=1:nx
+        cnt = 1
+        G = inv(-diag[ix,:,:]+diagL[ix,:,:]+diagR[ix,:,:])
+        for ilay=1:Layer.nlayer
+            #Sum over physical electrons
+            for ik=1:nklist
+                dos += gt(Layer.x[ilay])*G[cnt,cnt]
+                cnt +=1
+            end
+            #Pass over auxiliary electrons if any
+            if abs(Layer.D[ilay])>1e-8
+                cnt+=nklist
+            end
+        end
+    end
+    return -imag(dos)/(pi*nx)
+
 end

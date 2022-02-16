@@ -25,6 +25,7 @@ Fields:    all of them but nlayer, t_orth and ac are arrays of length nlayer
 - mu_aux          : chemical potential for the auxiliary electrons
 - Q               : CDW wave vector (set to 0 if no CDW)
 - Pcdw            : CDW coupling constant
+- g_tilde         : Zeeman splitting constant
 - nlayer          : Number of layers considered
 - t_orth          : interlayer coupling (if nlayer>1)
 - ac              : interlayer distance (in units of a=1)
@@ -47,13 +48,15 @@ struct LayerParameters
     mu_aux   :: LayerParam
     Q        :: Qvector
     Pcdw     :: LayerParam
+    g_tilde  :: LayerParam
     t_orth   :: LayerParam
     ac       :: LayerParam
 
     function LayerParameters(;nlayer,t0,tp0,J=zeros(Float64,nlayer),chi=zeros(Float64,nlayer),
                                 x=ones(Float64,nlayer),D=zeros(Float64,nlayer),yrz_mode=["Norm" for i=1:nlayer]
                                 ,mu=zeros(Float64,nlayer),mu_aux=zeros(Float64,nlayer),Q=Dict(i=>[] for i=1:nlayer),
-                                Pcdw=zeros(Float64,nlayer),t_orth=zeros(Float64,nlayer-1),ac=zeros(Float64,nlayer-1))
+                                Pcdw=zeros(Float64,nlayer),g_tilde=zeros(Float64,nlayer),
+                                t_orth=zeros(Float64,nlayer-1),ac=zeros(Float64,nlayer-1))
 
         ## Check that all variables are consistent with nlayer
         warn=[]
@@ -90,6 +93,9 @@ struct LayerParameters
         if length(Pcdw) != nlayer
             push!(warn,"Pcdw")
         end
+        if length(g_tilde) != nlayer
+            push!(warn,"g_tilde")
+        end
         if length(t_orth) != nlayer-1
             push!(warn,"t_orth")
         end
@@ -115,7 +121,7 @@ struct LayerParameters
         end
 
         ## generate struct
-        return new(nlayer,t0,tp0,t,tp,J,chi,x,D,yrz_mode,mu,mu_aux,Q,Pcdw,t_orth,ac)
+        return new(nlayer,t0,tp0,t,tp,J,chi,x,D,yrz_mode,mu,mu_aux,Q,Pcdw,g_tilde,t_orth,ac)
     end
 end
 

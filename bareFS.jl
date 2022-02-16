@@ -144,7 +144,7 @@ function get_qlist(Layer::LayerParameters)
 
     #If no cdw vector
     if length(qlist)==0
-        return []
+        return [],[]
     end
     #For all different Q, find the necessary nbr of kpoints
     ncdw_list = []
