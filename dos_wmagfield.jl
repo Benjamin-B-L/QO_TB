@@ -49,11 +49,11 @@ function getBdepDOS(pSim::SimulationParameters,Layer::LayerParameters)
         #Loop over magnetic field values
         for ib = 1:pSim.nb
             diag,diagL,diagR = getDiags(pSim.nx,pSim.bgrid[ib],pSim.theta,ky_list,Layer,norb,0.5,pSim.eta)
-            dos.dos[ib,iy] += get_dos(diag,diagL,diagR,Layer,pSim.nx,length(ky_list))
+            dos.dos[ib,iy] = get_dos(diag,diagL,diagR,Layer,pSim.nx,length(ky_list))
         end
     end
     for ib=1:pSim.nb
-        dos.dos[ib,pSim.ny_avg+1] = sum(dos.dos[ib,:])/ny_avg
+        dos.dos[ib,pSim.ny_avg+1] = sum(dos.dos[ib,:])/pSim.ny_avg
     end
     return dos
 end
@@ -74,7 +74,7 @@ function prepareHparam(Layer::LayerParameters)
     norb=0
     orbs_layer = Int64[]
     orb_cnt=1
-    for ilayer = 1:nlayer
+    for ilayer = 1:Layer.nlayer
         if Layer.D[ilayer] < 1e-8
             norb += max(ncdw,1)              #No auxiliary fermions in layer ilayer
             for icdw = 1:max(ncdw,1)         #get all orbs
@@ -104,7 +104,7 @@ done in y direction.
 function get_ncdw_wMagField(Layer::LayerParameters)
     #Extract all different Q vectors
     qlist = []
-    for ilayer = 1:nlayer
+    for ilayer = 1:Layer.nlayer
         if length(Layer.Q[ilayer]) > 0
             for iq = 1:length(Layer.Q[ilayer])
                 if !(Layer.Q[ilayer][iq] in qlist)
@@ -181,18 +181,18 @@ function getDiags(nx::Int64,B::Float64,theta::Float64,ky_list::Vector{Float64},L
     diagR = zeros(Complex{Float64},nx,norb,norb)
 
     #Diag
-    diag[1,:,:] = diagblock(1,B,theta,ky_list,Layer,norb,sigma,eta)
+    for ix = 1:nx
+        diag[ix,:,:] = diagblock(ix,B,theta,ky_list,Layer,norb,sigma,eta)
+    end
     #Left Diag
     diagL[1,:,:] = diagblock(1,B,theta,ky_list,Layer,norb,sigma,eta)
     #Right Diag
     diagR[nx,:,:] = diagblock(nx,B,theta,ky_list,Layer,norb,sigma,eta)
     for ix=2:nx
-        #Diag
-        diag[ix,:,:] = diagblock(ix,B,theta,ky_list,Layer,norb,sigma,eta)
         #Left Diag
         diagL[ix,:,:] = diag[ix,:,:]-offdiagblock(ix,ix-1,B,theta,ky_list,Layer,norb,sigma)*inv(diagL[ix-1,:,:])*offdiagblock(ix-1,ix,B,theta,ky_list,Layer,norb,sigma)
         #Right Diag
-        diagR[nx-ix+1,:,:] = diagblock(nx-ix+1,B,theta,ky_list,Layer,norb,sigma,eta)-offdiagblock(nx-ix+1,nx-ix+1+1,B,theta,ky_list,Layer,norb,sigma)*inv(diagR[nx-ix+1+1,:,:])*offdiagblock(nx-ix+1+1,nx-ix+1,B,theta,ky_list,Layer,norb,sigma)
+        diagR[nx-ix+1,:,:] = diag[nx-ix+1,:,:]-offdiagblock(nx-ix+1,nx-ix+1+1,B,theta,ky_list,Layer,norb,sigma)*inv(diagR[nx-ix+1+1,:,:])*offdiagblock(nx-ix+1+1,nx-ix+1,B,theta,ky_list,Layer,norb,sigma)
     end
 
     return diag,diagL,diagR

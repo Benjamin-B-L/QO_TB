@@ -65,7 +65,7 @@ function prepFSHam(Layer::LayerParameters)
     orbs = String[]
     orbs_layer = Int64[]
     orb_cnt=1
-    for ilayer = 1:nlayer
+    for ilayer = 1:Layer.nlayer
         if Layer.D[ilayer] < 1e-8
             norb += max(ncdw,1)              #No auxiliary fermions in layer ilayer
             for icdw = 1:max(ncdw,1)         #get all orbs
@@ -132,7 +132,7 @@ Find all the different q vectors in all layers
 function get_qlist(Layer::LayerParameters)
     #Extract all different Q vectors
     qlist = []
-    for ilayer = 1:nlayer
+    for ilayer = 1:Layer.nlayer
         if length(Layer.Q[ilayer]) > 0
             for iq = 1:length(Layer.Q[ilayer])
                 if !(Layer.Q[ilayer][iq] in qlist)
