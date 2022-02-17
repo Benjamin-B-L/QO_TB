@@ -3,7 +3,7 @@ BareFSswitch = true
 DOSswitch    = true
 
 ##SIMULATION PARAMETERS
-nx           = 1000           #bla
+nx           = 1000          
 ny_avg       = 5
 bmin         = 1/660
 bmax         = 1/580
@@ -25,7 +25,7 @@ D_yrz         = 0.0
 yrz_mode     = NORM
 mu_phys      = -0.2
 mu_aux       = 0.0
-Q            = [] 
+Q            = [(0.25,0.25) (0.1,0.1) ]
 Pcdw         = 0.0
 g_tilde      = 0.0
 t_orth       = 

@@ -173,7 +173,7 @@ function initialize(file::String)
         for x in split(split(input[indx],"=")[2])
             vec = []
             for q in SubString.(x,findall(r"\(.*?\)",x))
-                push!(vec,[parse(Float64,SubString.(q,findall(r"\d\.\d{1,8}",q))[1]),parse(Float64,SubString.(q,findall(r"\d\.\d{1,8}",q))[2])])
+                push!(vec,[2*pi*parse(Float64,SubString.(q,findall(r"\d\.\d{1,8}",q))[1]),2*pi*parse(Float64,SubString.(q,findall(r"\d\.\d{1,8}",q))[2])])
             end
             merge!(Q,Dict{Int64,Vector}(cnt=>vec))
             cnt+=1
