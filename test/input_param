@@ -1,0 +1,33 @@
+##TYPE OF CALCULATION
+BareFSswitch = true
+DOSswitch    = true
+
+##SIMULATION PARAMETERS
+nx           = 1000           #bla
+ny_avg       = 5
+bmin         = 1/660
+bmax         = 1/580
+nb           = 5000
+theta_in     = 0.0
+broadening   = 0.0001
+nk           = 100
+outfile      = test
+
+##LAYER PARAMETERS
+
+nlayer       = 1
+t0           = 1.0
+tp0          = 0.0
+J            = 0.0 
+chi          = 0.0
+doping       = 1.0
+D_yrz         = 0.0
+yrz_mode     = NORM
+mu_phys      = -0.2
+mu_aux       = 0.0
+Q            = [] 
+Pcdw         = 0.0
+g_tilde      = 0.0
+t_orth       = 
+ac           = 
+
