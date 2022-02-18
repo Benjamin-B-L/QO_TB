@@ -229,12 +229,12 @@ function diagblock(ix::Int64,B::Float64,theta::Float64,ky_list::Vector{Float64},
                         for q in Layer.Q[ilay]
                             if abs(q[1])<1e-8
                                 #+Qy
-                                kq = mod((ky_list[ik]+q[2])+pi,2pi)
+                                kq = mod((ky_list[ik]+q[2]),2pi)
                                 kq_index = cnt_perlay[ilay] + findfirst(x->abs(x-kq)<1e-8,ky_list)
                                 H[cnt,kq_index] += cdw_coupling("diag","y",ky_list[ik],Layer.Pcdw[ilay],ix,0.0,B,theta)
                                 H[kq_index,cnt] += cdw_coupling("diag","y",ky_list[ik],Layer.Pcdw[ilay],ix,0.0,B,theta)
                                 #-Qy
-                                kq = mod((ky_list[ik]-q[2])+pi,2pi)
+                                kq = mod((ky_list[ik]-q[2]),2pi)
                                 kq_index = cnt_perlay[ilay] + findfirst(x->abs(x-kq)^2<1e-8,ky_list)
                                 H[cnt,kq_index] += cdw_coupling("diag","y",ky_list[ik],Layer.Pcdw[ilay],ix,0.0,B,theta)
                                 H[kq_index,cnt] += cdw_coupling("diag","y",ky_list[ik],Layer.Pcdw[ilay],ix,0.0,B,theta)
@@ -280,12 +280,12 @@ function diagblock(ix::Int64,B::Float64,theta::Float64,ky_list::Vector{Float64},
                 for q in Layer.Q[ilay]
                     if abs(q[1])<1e-8
                         #+Qy
-                        kq = mod((ky_list[ik]+q[2])+pi,2pi)
+                        kq = mod((ky_list[ik]+q[2]),2pi)
                         kq_index = cnt_perlay[ilay] + findfirst(x->abs(x-kq)^2<1e-8,ky_list)
                         H[cnt,kq_index] += cdw_coupling("diag","y",ky_list[ik],Layer.Pcdw[ilay],ix,0.0,B,theta)
                         H[kq_index,cnt] += cdw_coupling("diag","y",ky_list[ik],Layer.Pcdw[ilay],ix,0.0,B,theta)
                         #-Qy
-                        kq = mod((ky_list[ik]-q[2])+pi,2pi)
+                        kq = mod((ky_list[ik]-q[2]),2pi)
                         kq_index = cnt_perlay[ilay] + findfirst(x->abs(x-kq)^2<1e-8,ky_list)
                         H[cnt,kq_index] += cdw_coupling("diag","y",ky_list[ik],Layer.Pcdw[ilay],ix,0.0,B,theta)
                         H[kq_index,cnt] += cdw_coupling("diag","y",ky_list[ik],Layer.Pcdw[ilay],ix,0.0,B,theta)
@@ -346,12 +346,12 @@ function offdiagblock(ix1::Int64,ix2::Int64,B::Float64,theta::Float64,ky_list::V
                         for q in Layer.Q[ilay]
                             if abs(q[1])<1e-8
                                 #+Qy
-                                kq = mod((ky_list[ik]+q[2])+pi,2pi)
+                                kq = mod((ky_list[ik]+q[2]),2pi)
                                 kq_index = cnt_perlay[ilay] + findfirst(x->abs(x-kq)<1e-8,ky_list)
                                 H[cnt,kq_index] += cdw_coupling("offdiag","y",ky_list[ik],Layer.Pcdw[ilay],ix1,0.0,B,theta)
                                 H[kq_index,cnt] += cdw_coupling("offdiag","y",ky_list[ik],Layer.Pcdw[ilay],ix1,0.0,B,theta)
                                 #-Qy
-                                kq = mod((ky_list[ik]-q[2])+pi,2pi)
+                                kq = mod((ky_list[ik]-q[2]),2pi)
                                 kq_index = cnt_perlay[ilay] + findfirst(x->abs(x-kq)^2<1e-8,ky_list)
                                 H[cnt,kq_index] += cdw_coupling("offdiag","y",ky_list[ik],Layer.Pcdw[ilay],ix1,0.0,B,theta)
                                 H[kq_index,cnt] += cdw_coupling("offdiag","y",ky_list[ik],Layer.Pcdw[ilay],ix1,0.0,B,theta)
@@ -382,12 +382,12 @@ function offdiagblock(ix1::Int64,ix2::Int64,B::Float64,theta::Float64,ky_list::V
                 for q in Layer.Q[ilay]
                     if abs(q[1])<1e-8
                         #+Qy
-                        kq = mod((ky_list[ik]+q[2])+pi,2pi)
+                        kq = mod((ky_list[ik]+q[2]),2pi)
                         kq_index = cnt_perlay[ilay] + findfirst(x->abs(x-kq)<1e-8,ky_list)
                         H[cnt,kq_index] += cdw_coupling("offdiag","y",ky_list[ik],Layer.Pcdw[ilay],ix1,0.0,B,theta)
                         H[kq_index,cnt] += cdw_coupling("offdiag","y",ky_list[ik],Layer.Pcdw[ilay],ix1,0.0,B,theta)
                         #-Qy
-                        kq = mod((ky_list[ik]-q[2])+pi,2pi)
+                        kq = mod((ky_list[ik]-q[2]),2pi)
                         kq_index = cnt_perlay[ilay] + findfirst(x->abs(x-kq)^2<1e-8,ky_list)
                         H[cnt,kq_index] += cdw_coupling("offdiag","y",ky_list[ik],Layer.Pcdw[ilay],ix1,0.0,B,theta)
                         H[kq_index,cnt] += cdw_coupling("offdiag","y",ky_list[ik],Layer.Pcdw[ilay],ix1,0.0,B,theta)
@@ -415,7 +415,7 @@ function eps(switch,ky,t,tp,mu,ix1,ix2,B,theta)
     if switch=="diag"
         return -2*t*cos(2*pi*B*cos(theta)*ix1+ky)-mu
     elseif switch=="offdiag"
-        return -t-2*tp*cos(2*pi*B*cos(theta)*(ix1+0.5*sign(ix1-ix2))+ky)
+        return -t-2*tp*cos(2*pi*B*cos(theta)*(ix1+0.5*sign(ix2-ix1))+ky)
     else
         throw(ArgumentError("Input switch not recongnized: must be either set to diag or offdiag"))
     end
@@ -433,7 +433,7 @@ function eps_aux(switch,ky,t,tp,mu,yrz_mode,ix1,ix2,B,theta)
         if yrz_mode=="Norm"
             return t
         elseif yrz_mode=="AFM"
-            return t-2*tp*cos(2*pi*B*cos(theta)*(ix1+0.5*sign(ix1-ix2))+ky)
+            return t-2*tp*cos(2*pi*B*cos(theta)*(ix1+0.5*sign(ix2-ix1))+ky)
         else
             throw(ArgumentError("YRZ mode $yrz_mode not implemented"))
         end
@@ -468,13 +468,13 @@ function cdw_coupling(switch,direction,ky,Pcdw,ix1,ix2,B,theta,qx=0)
         if direction=="y"
             return -Pcdw*cos(2*pi*B*cos(theta)*ix1+ky)
         elseif direction=="x"
-            return -Pcdw*cos(2*pi*B*cos(theta)*ix1+ky)*exp(im*qx*ix1)
+            return -2*Pcdw*cos(2*pi*B*cos(theta)*ix1+ky)*cos(qx*ix1)
         end
     elseif switch=="offdiag"
         if direction=="y"
             return 0.5*Pcdw
         elseif direction=="x"
-            return 0.5*Pcdw*exp(-im*qx*(ix1+sign(ix2-ix1)))
+            return 0.5*Pcdw*(exp(im*qx*(ix1+sign(ix2-ix1)))+exp(-im*qx*ix1))
         end
     else
         throw(ArgumentError("Input switch not recongnized: must be either set to diag or offdiag"))

@@ -150,7 +150,7 @@ def call_parallelQO(DOSswitch, BareFSswitch, pSim, pLayer, ncores):
     # Bare FS
     if BareFSswitch:
         # just take one and remove the others
-        subprocess.run("mv "+pSim.outfile+"_0.FS " + pSim.outfile
+        subprocess.run("cp "+pSim.outfile+"_0.FS " + pSim.outfile
                        + ".FS && rm "+pSim.outfile+"_*.FS", shell=True)
     # DOS
     if DOSswitch:
