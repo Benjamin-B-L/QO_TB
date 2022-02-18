@@ -129,7 +129,8 @@ def call_QO(id, bgrid, DOSswitch, BareFSswitch, pSim, pLayer):
     # Write the input file
     write_input(inputfile, DOSswitch, BareFSswitch, pSim, pLayer)
     # Call the main routines
-    subprocess.run("julia ../src/main_QO.jl "+inputfile, shell=True)
+    subprocess.run(
+        "julia /Users/benjamin.bacq-labreuil/Codes_source/QO_TB/src/main_QO.jl "+inputfile, shell=True)
     # Clean up input file
     subprocess.run("rm "+inputfile, shell=True)
 
