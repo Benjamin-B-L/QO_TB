@@ -97,6 +97,7 @@ Determines the list of k-points necessary for FS calculation from the q vectors
 """
 function get_klist(ncdw_list::Vector{Any},qlist::Vector{Any})
     klist=[[0.0,0.0]]
+    klist_round=[[0.0,0.0]]
     #If no cdw vector
     if length(qlist) == 0
         return klist
@@ -107,11 +108,13 @@ function get_klist(ncdw_list::Vector{Any},qlist::Vector{Any})
     while iq <= length(qlist)
         for k in ktmp
             for inq=1:ncdw_list[iq]
-                if !([mod((k+qlist[iq])[1],2pi),mod((k+qlist[iq])[2],2pi)] in klist)
+                if !(round.([mod((k+qlist[iq])[1],2pi),mod((k+qlist[iq])[2],2pi)],digits=4) in klist_round)
                     append!(klist,[[mod((k+qlist[iq])[1],2pi),mod((k+qlist[iq])[2],2pi)]])
+                    append!(klist_round,[round.([mod((k+qlist[iq])[1],2pi),mod((k+qlist[iq])[2],2pi)],digits=4)])
                 end
             end
         end
+        #println(klist)
         if length(ktmp)==length(klist)
             if iq==length(qlist)
                 break
@@ -152,9 +155,17 @@ function get_qlist(Layer::LayerParameters)
     ncdw_list = []
     for q in qlist
         if abs(q[1])>1e-8 && abs(q[2])<1e-8               #if x unidirectional
-            append!(ncdw_list,Int64(2*pi/abs(q[1])))
+            if abs(trunc(Int64,2*pi/abs(q[1]))-2*pi/abs(q[1]))<1e-4
+                append!(ncdw_list,trunc(Int64,2*pi/abs(q[1])))
+            else
+                throw(ArgumentError("Q vector provided is not an integer..."))
+            end
         elseif abs(q[2])>1e-8 && abs(q[1])<1e-8           #if x unidirectional
-            append!(ncdw_list,Int64(2*pi/abs(q[2])))
+            if abs(trunc(Int64,2*pi/abs(q[2]))-2*pi/abs(q[2]))<1e-4
+                append!(ncdw_list,trunc(Int64,2*pi/abs(q[2])))
+            else
+                throw(ArgumentError("Q vector provided is not an integer..."))
+            end
         elseif abs(q[1])>1e-8 && abs(q[2])>1e-8           #if (x,y) bi-directional
             if abs(q[1])-abs(q[2])>1e-8
                 throw(ArgumentError("Q=(qx,qy) with abs(qx)!=abs(qy) is not yet implemented !"))

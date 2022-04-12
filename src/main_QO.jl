@@ -21,6 +21,7 @@ if BareFSswitch
 end
 
 if DOSswitch
+    print("bla")
     #Compute DOS for all magnetic field values
     dos = getBdepDOS(pSim,pLayer)
     saveDOS(dos,pSim)
