@@ -236,7 +236,7 @@ function diagblock(ix::Int64,B::Float64,theta::Float64,ky_list::Vector{Float64},
                             if abs(q[1])<1e-8
                                 #+Qy
                                 kq = mod((ky_list[ik]+q[2]),2pi)
-                                kq_index = cnt_perlay[ilay] + findfirst(x->abs(x-kq)<1e-4,ky_list)
+                                kq_index = cnt_perlay[ilay] + findfirst(x->abs(x-kq)^2<1e-8,ky_list)
                                 H[cnt,kq_index] += cdw_coupling("diag","y",ky_list[ik],Layer.Pcdw[ilay],ix,0.0,B,theta)
                                 H[kq_index,cnt] += cdw_coupling("diag","y",ky_list[ik],Layer.Pcdw[ilay],ix,0.0,B,theta)
                                 #-Qy
@@ -353,7 +353,7 @@ function offdiagblock(ix1::Int64,ix2::Int64,B::Float64,theta::Float64,ky_list::V
                             if abs(q[1])<1e-8
                                 #+Qy
                                 kq = mod((ky_list[ik]+q[2]),2pi)
-                                kq_index = cnt_perlay[ilay] + findfirst(x->abs(x-kq)<1e-8,ky_list)
+                                kq_index = cnt_perlay[ilay] + findfirst(x->abs(x-kq)^2<1e-8,ky_list)
                                 H[cnt,kq_index] += cdw_coupling("offdiag","y",ky_list[ik],Layer.Pcdw[ilay],ix1,0.0,B,theta)
                                 H[kq_index,cnt] += cdw_coupling("offdiag","y",ky_list[ik],Layer.Pcdw[ilay],ix1,0.0,B,theta)
                                 #-Qy
