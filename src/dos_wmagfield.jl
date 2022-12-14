@@ -435,7 +435,7 @@ Compute the dispersion term for the diagonal or off-diag block for auxiliary ele
 """
 function eps_aux(switch,ky,t,tp,mu,yrz_mode,ix1,ix2,B,theta)
     if switch=="diag"
-        return 2*t*cos(2*pi*B*cos(theta)*ix1+ky)-mu
+        return 2*t*cos(2*pi*B*cos(theta)*ix1+ky)+mu
     elseif switch=="offdiag"
         if yrz_mode=="Norm"
             return t
