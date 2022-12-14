@@ -108,7 +108,7 @@ function get_klist(ncdw_list::Vector{Any},qlist::Vector{Any})
     while iq <= length(qlist)
         for k in ktmp
             for inq=1:ncdw_list[iq]
-                if !(round.([mod((k+qlist[iq])[1],2pi),mod((k+qlist[iq])[2],2pi)],digits=4) in klist_round)
+                if !(round.([mod(round((k+qlist[iq])[1],digits=4),round(2pi,digits=4)),mod(round((k+qlist[iq])[2],digits=4),round(2pi,digits=4))],digits=4) in klist_round)
                     append!(klist,[[mod((k+qlist[iq])[1],2pi),mod((k+qlist[iq])[2],2pi)]])
                     append!(klist_round,[round.([mod((k+qlist[iq])[1],2pi),mod((k+qlist[iq])[2],2pi)],digits=4)])
                 end
@@ -234,6 +234,7 @@ function getH(Layer::LayerParameters,norb::Int64,klist::Vector{Vector{Float64}})
     H = zeros(Complex{Float64},norb,norb)
     cnt=1
     cnt_perlay=[]
+
     for ilay = 1:Layer.nlayer
         push!(cnt_perlay,cnt-1)
         #if YRZ model
@@ -249,12 +250,12 @@ function getH(Layer::LayerParameters,norb::Int64,klist::Vector{Vector{Float64}})
                         #CDW
                         for q in Layer.Q[ilay]
                             #+Q
-                            kq = [mod((klist[ik]+q)[1]+pi,2pi)-pi,mod((klist[ik]+q)[2]+pi,2pi)-pi]
-                            kq_index = cnt_perlay[ilay] + findfirst(x->abs((x[1]-kq[1])^2+(x[2]-kq[2])^2)<1e-8,klist)
+                            kq = [mod(round((klist[ik]+q)[1]+pi,digits=4),round(2pi,digits=4))-pi,mod(round((klist[ik]+q)[2]+pi,digits=4),round(2pi,digits=4))-pi]
+                            kq_index = cnt_perlay[ilay] + findfirst(x->abs((x[1]-kq[1])^2+(x[2]-kq[2])^2)<1e-6,klist)
                             H[cnt,kq_index] += Layer.Pcdw[ilay]*ffactor(klist[ik])
                             H[kq_index,cnt] += Layer.Pcdw[ilay]*ffactor(klist[ik])
                             #-Q
-                            kq = [mod((klist[ik]-q)[1]+pi,2pi)-pi,mod((klist[ik]-q)[2]+pi,2pi)-pi]
+                            kq = [mod(round((klist[ik]-q)[1]+pi,digits=4),round(2pi,digits=4))-pi,mod(round((klist[ik]-q)[2]+pi,digits=4),round(2pi,digits=4))-pi]
                             kq_index = cnt_perlay[ilay] + findfirst(x->abs((x[1]-kq[1])^2+(x[2]-kq[2])^2)<1e-8,klist)
                             H[cnt,kq_index] += Layer.Pcdw[ilay]*ffactor(klist[ik])
                             H[kq_index,cnt] += Layer.Pcdw[ilay]*ffactor(klist[ik])
@@ -290,12 +291,12 @@ function getH(Layer::LayerParameters,norb::Int64,klist::Vector{Vector{Float64}})
                 #CDW
                 for q in Layer.Q[ilay]
                     #+Q
-                    kq = [mod((klist[ik]+q)[1]+pi,2pi)-pi,mod((klist[ik]+q)[2]+pi,2pi)-pi]
+                    kq = [mod(round((klist[ik]+q)[1]+pi,digits=4),round(2pi,digits=4))-pi,mod(round((klist[ik]+q)[2]+pi,digits=4),round(2pi,digits=4))-pi]
                     kq_index = cnt_perlay[ilay] + findfirst(x->abs((x[1]-kq[1])^2+(x[2]-kq[2])^2)<1e-8,klist)
                     H[cnt,kq_index] += Layer.Pcdw[ilay]*ffactor(klist[ik])
                     H[kq_index,cnt] += Layer.Pcdw[ilay]*ffactor(klist[ik])
                     #-Q
-                    kq = [mod((klist[ik]-q)[1]+pi,2pi)-pi,mod((klist[ik]-q)[2]+pi,2pi)-pi]
+                    kq = [mod(round((klist[ik]-q)[1]+pi,digits=4),round(2pi,digits=4))-pi,mod(round((klist[ik]-q)[2]+pi,digits=4),round(2pi,digits=4))-pi]
                     kq_index = cnt_perlay[ilay] + findfirst(x->abs((x[1]-kq[1])^2+(x[2]-kq[2])^2)<1e-8,klist)
                     H[cnt,kq_index] += Layer.Pcdw[ilay]*ffactor(klist[ik])
                     H[kq_index,cnt] += Layer.Pcdw[ilay]*ffactor(klist[ik])

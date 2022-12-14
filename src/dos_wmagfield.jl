@@ -42,6 +42,7 @@ so that we can perform FT along the y direction.
 function getBdepDOS(pSim::SimulationParameters,Layer::LayerParameters)
     #Prepare parameters for the Hamiltonian blocks
     norb,orbs_layer,klist = prepareHparam(Layer)
+    println(klist)
 
     dos = DensityOfStates(dos_size=pSim.nb,nky=pSim.ny_avg+1)
     for iy = 1:pSim.ny_avg
@@ -157,7 +158,7 @@ function get_klist_wMagField(ncdw_list::Vector{Any},qlist::Vector{Any})
     while iq <= length(qlist)
         for k in ktmp
             for inq=1:ncdw_list[iq]
-                if !(round.([mod((k+qlist[iq])[1],2pi),mod((k+qlist[iq])[2],2pi)],digits=4) in klist_round)
+                if !(round.([mod(round((k+qlist[iq])[1],digits=4),round(2pi,digits=4)),mod(round((k+qlist[iq])[2],digits=4),round(2pi,digits=4))],digits=4) in klist_round)
                     append!(klist,[[mod((k+qlist[iq])[1],2pi),mod((k+qlist[iq])[2],2pi)]])
                     append!(klist_round,[round.([mod((k+qlist[iq])[1],2pi),mod((k+qlist[iq])[2],2pi)],digits=4)])
                 end
