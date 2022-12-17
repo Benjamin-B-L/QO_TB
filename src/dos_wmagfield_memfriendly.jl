@@ -1,6 +1,5 @@
 using LinearAlgebra
-using BenchmarkTools
-using Dates
+using DoubleFloats
 
 include("params.jl")
 include("layers.jl")
@@ -49,12 +48,12 @@ function getBdepDOS(pSim::SimulationParameters,Layer::LayerParameters)
     dos = DensityOfStates(dos_size=pSim.nb,nky=pSim.ny_avg+1)
     for iy = 1:pSim.ny_avg
         #Pick a random ky between [0:2pi[ and create ky_list
-        ky = pi #2*pi*rand(Float64)
+        ky = 2*pi*rand(Float64)
         ky_list = [mod(klist[ik][2]+ky,2*pi) for ik=1:length(klist)]
+
         #Loop over magnetic field values
         for ib = 1:pSim.nb
-            diag,diagL,diagR = getDiags(pSim.nx,pSim.bgrid[ib],pSim.theta,ky_list,Layer,norb,0.5,pSim.eta)
-            dos.dos[ib,iy] = get_dos(diag,diagL,diagR,Layer,pSim.nx,length(ky_list))
+            dos.dos[ib,iy] = get_dos(pSim.nx,pSim.bgrid[ib],pSim.theta,ky_list,Layer,norb,0.5,pSim.eta)
         end
     end
     for ib=1:pSim.nb
@@ -182,31 +181,70 @@ end
 
 
 """
-    getDiags(nx::Int64,B::Float64,theta::Float64,ky_list::Vector{Float64},Layer::LayerParameters,norb::Int64,sigma::Float64,eta::Float64)
+    get_dos(nx::Int64,B::Float64,theta::Float64,ky_list::Vector{Float64},Layer::LayerParameters,norb::Int64,sigma::Float64,eta::Float64)
 
-Compute iteratively the left and right diagonal blocks necessary for the Green's function calculation
+Compute iteratively the density of states. To avoid memory troubles, we first sweep the diagL entirely from ix=1 to N, 
+and we then sweep backwards keeping only two copies of diagL, diag, diagR.
 """
-function getDiags(nx::Int64,B::Float64,theta::Float64,ky_list::Vector{Float64},Layer::LayerParameters,norb::Int64,sigma::Float64,eta::Float64)
-    diag = zeros(Complex{Float64},nx,norb,norb)
+function get_dos(nx::Int64,B::Float64,theta::Float64,ky_list::Vector{Float64},Layer::LayerParameters,norb::Int64,sigma::Float64,eta::Float64)
+    nklist = length(ky_list)
+    #prepare the necessary temporary arrays
+    dos = 0
+    diag = zeros(Complex{Float64},norb,norb)
     diagL = zeros(Complex{Float64},nx,norb,norb)
-    diagR = zeros(Complex{Float64},nx,norb,norb)
+    diagR = zeros(Complex{Float64},norb,norb)
 
-    #Diag
-    for ix = 1:nx
-        diag[ix,:,:] = diagblock(ix,B,theta,ky_list,Layer,norb,sigma,eta)
-    end
-    #Left Diag
+    ####first sweep diagL entirely to the right
     diagL[1,:,:] = diagblock(1,B,theta,ky_list,Layer,norb,sigma,eta)
-    #Right Diag
-    diagR[nx,:,:] = diagblock(nx,B,theta,ky_list,Layer,norb,sigma,eta)
     for ix=2:nx
-        #Left Diag
-        diagL[ix,:,:] = diag[ix,:,:]-offdiagblock(ix,ix-1,B,theta,ky_list,Layer,norb,sigma)*inv(diagL[ix-1,:,:])*offdiagblock(ix-1,ix,B,theta,ky_list,Layer,norb,sigma)
-        #Right Diag
-        diagR[nx-ix+1,:,:] = diag[nx-ix+1,:,:]-offdiagblock(nx-ix+1,nx-ix+1+1,B,theta,ky_list,Layer,norb,sigma)*inv(diagR[nx-ix+1+1,:,:])*offdiagblock(nx-ix+1+1,nx-ix+1,B,theta,ky_list,Layer,norb,sigma)
+        diagL[ix,:,:] = diagblock(ix,B,theta,ky_list,Layer,norb,sigma,eta)-offdiagblock(ix,ix-1,B,theta,ky_list,Layer,norb,sigma)*inv(diagL[ix-1,:,:])*offdiagblock(ix-1,ix,B,theta,ky_list,Layer,norb,sigma)
     end
 
-    return diag,diagL,diagR
+
+    ###Then sweep backwards and compute contribution to the dos
+    #for for ix = nx
+    diagR = diagblock(nx,B,theta,ky_list,Layer,norb,sigma,eta)
+    old_diag = diagR
+    cnt = 1
+    G = inv(diagL[nx,:,:])         #for ix=nx diagR and diag contributions cancel out
+    for ilay=1:Layer.nlayer
+        #Sum over physical electrons
+        for ik=1:nklist
+            dos += gt(Layer.x[ilay])*G[cnt,cnt]
+            cnt +=1
+        end
+        #Pass over auxiliary electrons if any
+        if abs(Layer.D[ilay])>1e-8
+            cnt+=nklist
+        end
+    end
+
+    #for for the rest of the system
+    for ix=nx-1:-1:1
+
+        #get diag diagR
+        diag = diagblock(ix,B,theta,ky_list,Layer,norb,sigma,eta)
+        diagR = diag - offdiagblock(ix,ix+1,B,theta,ky_list,Layer,norb,sigma)*inv(diagR)*offdiagblock(ix+1,ix,B,theta,ky_list,Layer,norb,sigma)
+
+        #get the contribution to the dos
+        cnt = 1
+        G = inv(-diag+diagL[ix,:,:]+diagR)
+        for ilay=1:Layer.nlayer
+            #Sum over physical electrons
+            for ik=1:nklist
+                dos += gt(Layer.x[ilay])*G[cnt,cnt]
+                cnt +=1
+            end
+            #Pass over auxiliary electrons if any
+            if abs(Layer.D[ilay])>1e-8
+                cnt+=nklist
+            end
+        end
+
+    end
+   
+    return -imag(dos)/(pi*nx)
+
 end
 
 """
@@ -496,31 +534,4 @@ function cdw_coupling(switch,direction,ky,Pcdw,ix1,ix2,B,theta,qx=0)
     end
 end
 
-"""
-    get_dos(diag::Array{ComplexF64, 3},diagL::Array{ComplexF64, 3},diagR::Array{ComplexF64, 3},
-    Layer::LayerParameters,nx::Int64,nklist::Int64)
 
-documentation
-"""
-function get_dos(diag::Array{ComplexF64, 3},diagL::Array{ComplexF64, 3},diagR::Array{ComplexF64, 3},
-                  Layer::LayerParameters,nx::Int64,nklist::Int64)
-    dos = 0
-
-    for ix=1:nx
-        cnt = 1
-        G = inv(-diag[ix,:,:]+diagL[ix,:,:]+diagR[ix,:,:])
-        for ilay=1:Layer.nlayer
-            #Sum over physical electrons
-            for ik=1:nklist
-                dos += gt(Layer.x[ilay])*G[cnt,cnt]
-                cnt +=1
-            end
-            #Pass over auxiliary electrons if any
-            if abs(Layer.D[ilay])>1e-8
-                cnt+=nklist
-            end
-        end
-    end
-    return -imag(dos)/(pi*nx)
-
-end
