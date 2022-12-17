@@ -1,5 +1,4 @@
 using LinearAlgebra
-using DoubleFloats
 
 include("params.jl")
 include("layers.jl")
