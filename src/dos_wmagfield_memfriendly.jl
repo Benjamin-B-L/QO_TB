@@ -485,7 +485,7 @@ function eps_aux(switch,ky,t,tp,mu,yrz_mode,ix1,ix2,B,theta)
         if yrz_mode=="Norm"
             return t
         elseif yrz_mode=="AFM"
-            return t+2*tp*cos(2*pi*B*cos(theta)*(ix1+0.5*sign(ix2-ix1))+ky)
+            return t-2*tp*cos(2*pi*B*cos(theta)*(ix1+0.5*sign(ix2-ix1))+ky)
         else
             throw(ArgumentError("YRZ mode $yrz_mode not implemented"))
         end
